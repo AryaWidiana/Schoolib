@@ -1,0 +1,256 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+@import "tailwindcss";
+
+:root {
+  --blue-light: #BFE8F7;
+  --blue-dark: #1D2A8A;
+  --blue-mid: #3B82F6;
+  --blue-pastel: #DBEAFE;
+  --cream: #F7F1D5;
+  --white: #FFFFFF;
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --border: #E2E8F0;
+  --surface: #F8FAFC;
+  --sidebar-width: 250px;
+  --topbar-height: 70px;
+  --right-sidebar-width: 280px;
+  --radius: 14px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow: 0 4px 16px rgba(29,42,138,0.08);
+  --shadow-lg: 0 8px 32px rgba(29,42,138,0.12);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text-primary);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ───────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* ── SchooLib Utilities ──────────────────── */
+.schoolib-card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.schoolib-card:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.schoolib-btn-primary {
+  background: linear-gradient(135deg, #1D2A8A 0%, #3B5BDB 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.schoolib-btn-primary:hover {
+  background: linear-gradient(135deg, #15206A 0%, #2F4AC7 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(29,42,138,0.3);
+}
+.schoolib-btn-primary:active { transform: translateY(0); }
+.schoolib-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.schoolib-btn-secondary {
+  background: var(--blue-pastel);
+  color: var(--blue-dark);
+  border: 1px solid #BFDBFE;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.schoolib-btn-secondary:hover {
+  background: #BFDBFE;
+  transform: translateY(-1px);
+}
+
+.schoolib-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text-primary);
+  background: white;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+.schoolib-input:focus {
+  border-color: var(--blue-dark);
+  box-shadow: 0 0 0 3px rgba(29,42,138,0.1);
+}
+.schoolib-input::placeholder { color: var(--text-muted); }
+
+.schoolib-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+/* ── Status Badges ───────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.badge-blue    { background: #DBEAFE; color: #1D4ED8; }
+.badge-yellow  { background: #FEF9C3; color: #854D0E; }
+.badge-green   { background: #DCFCE7; color: #166534; }
+.badge-red     { background: #FEE2E2; color: #991B1B; }
+.badge-gray    { background: #F1F5F9; color: #475569; }
+.badge-purple  { background: #F3E8FF; color: #7C3AED; }
+
+/* ── Gradient Text ───────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, var(--blue-dark) 0%, #3B5BDB 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Layout ──────────────────────────────── */
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr var(--right-sidebar-width);
+  grid-template-rows: var(--topbar-height) 1fr;
+  min-height: 100vh;
+  background: var(--surface);
+}
+
+.dashboard-sidebar { grid-row: 1 / -1; grid-column: 1; }
+.dashboard-topbar  { grid-row: 1; grid-column: 2 / -1; }
+.dashboard-main    { grid-row: 2; grid-column: 2; overflow-y: auto; }
+.dashboard-right   { grid-row: 2; grid-column: 3; overflow-y: auto; }
+
+@media (max-width: 1200px) {
+  .dashboard-layout {
+    grid-template-columns: var(--sidebar-width) 1fr;
+  }
+  .dashboard-topbar { grid-column: 2; }
+  .dashboard-main   { grid-column: 2; }
+  .dashboard-right  { display: none; }
+}
+
+@media (max-width: 768px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--topbar-height) 1fr;
+  }
+  .dashboard-sidebar { display: none; }
+  .dashboard-topbar  { grid-column: 1; }
+  .dashboard-main    { grid-column: 1; }
+}
+
+/* ── Animations ──────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in-up { animation: fadeInUp 0.4s ease both; }
+.animate-fade-in    { animation: fadeIn 0.3s ease both; }
+
+.stagger-1  { animation-delay: 0.05s; }
+.stagger-2  { animation-delay: 0.10s; }
+.stagger-3  { animation-delay: 0.15s; }
+.stagger-4  { animation-delay: 0.20s; }
+.stagger-5  { animation-delay: 0.25s; }
+
+/* ── Skeleton loader ─────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* ── Book cover placeholder ──────────────── */
+.book-cover {
+  aspect-ratio: 2/3;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* ── Hero banner ─────────────────────────── */
+.hero-banner {
+  background: linear-gradient(135deg, #1D2A8A 0%, #3B5BDB 50%, #1D2A8A 100%);
+  border-radius: 20px;
+  padding: 36px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+.hero-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(191,232,247,0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-banner::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: 20%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Search, Bell, User, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
@@ -16,10 +16,19 @@ export function Topbar({ profile }: TopbarProps) {
   const [query, setQuery] = useState('')
   const [showProfile, setShowProfile] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (query.trim()) router.push(`/koleksi?q=${encodeURIComponent(query.trim())}`)
+    const q = query.trim()
+    if (!q) return
+    // Halaman yang menampilkan hasil pencarian di tempat (tidak redirect)
+    const inPageSearchPaths = ['/', '/koleksi', '/ebook', '/populer', '/favorit', '/riwayat']
+    if (inPageSearchPaths.includes(pathname)) {
+      router.push(`${pathname}?q=${encodeURIComponent(q)}`)
+    } else {
+      router.push(`/koleksi?q=${encodeURIComponent(q)}`)
+    }
   }
 
   return (
@@ -34,8 +43,8 @@ export function Topbar({ profile }: TopbarProps) {
       top: 0,
       zIndex: 50,
     }}>
-      {/* Search */}
-      <form onSubmit={handleSearch} style={{ flex: 1, maxWidth: 480 }}>
+      {/* Search — disembunyikan di halaman profil */}
+      {pathname !== '/profil' && <form onSubmit={handleSearch} style={{ flex: 1, maxWidth: 480 }}>
         <div style={{ position: 'relative' }}>
           <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
           <input
@@ -59,7 +68,7 @@ export function Topbar({ profile }: TopbarProps) {
             onBlur={(e) => { e.target.style.borderColor = '#E2E8F0'; e.target.style.background = '#F8FAFC'; e.target.style.boxShadow = 'none' }}
           />
         </div>
-      </form>
+      </form>}
 
       <div style={{ flex: 1 }} />
 

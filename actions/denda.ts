@@ -139,3 +139,37 @@ export async function markNotificationRead(notifId: string): Promise<void> {
   })
   revalidatePath('/', 'layout')
 }
+
+// Delete member (petugas)
+export async function deleteMember(userId: string): Promise<ActionResult> {
+  const user = await getUser()
+  if (!user) return { success: false, message: 'Tidak terautentikasi.' }
+  if (user.role !== 'petugas') return { success: false, message: 'Akses ditolak.' }
+
+  try {
+    // Periksa apakah anggota memiliki pinjaman aktif
+    const activeLoans = await prisma.loan.count({
+      where: {
+        user_id: userId,
+        status: { in: ['dipinjam', 'terlambat'] }
+      }
+    })
+
+    if (activeLoans > 0) {
+      return { success: false, message: 'Anggota tidak dapat dihapus karena masih memiliki buku yang belum dikembalikan.' }
+    }
+
+    // Jika ada denda yang belum dibayar, peringatkan? 
+    // Kita bisa biarkan delete, tapi pastikan constraint database tidak error (onDelete: Cascade).
+    // Profil dihapus, otomatis menghapus riwayat pinjaman, favorit, dan notifikasi berkat Cascade.
+    
+    await prisma.profile.delete({
+      where: { id: userId }
+    })
+
+    revalidatePath('/petugas/anggota')
+    return { success: true, message: 'Anggota berhasil dihapus.' }
+  } catch (error: any) {
+    return { success: false, message: 'Gagal menghapus anggota: ' + error.message }
+  }
+}

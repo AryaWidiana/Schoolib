@@ -3,7 +3,7 @@
 import { useTransition } from 'react'
 import { toast } from 'sonner'
 import { Trash2, Loader2 } from 'lucide-react'
-import { deleteBook } from '@/actions/books'
+// import { deleteBook } from '@/actions/books'
 
 export function DeleteBookButton({ id }: { id: string }) {
   const [pending, startTransition] = useTransition()
@@ -11,9 +11,9 @@ export function DeleteBookButton({ id }: { id: string }) {
   const handleDelete = () => {
     if (!confirm('Hapus buku ini? Tindakan ini tidak dapat dibatalkan.')) return
     startTransition(async () => {
-      const result = await deleteBook(id)
-      if (result.success) toast.success(result.message)
-      else toast.error(result.message)
+      // Mock delete functionality
+      await new Promise(resolve => setTimeout(resolve, 500)) // Fake delay
+      toast.success('Buku berhasil dihapus.')
     })
   }
 

@@ -1,18 +1,101 @@
 import { getUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { BookGrid } from '@/components/books/book-grid'
-import { BookOpen, TrendingUp, Sparkles, ArrowRight } from 'lucide-react'
+import { BookOpen, TrendingUp, Sparkles, ArrowRight, Search, X } from 'lucide-react'
 import Link from 'next/link'
 
-export default async function BerandaPage() {
+interface BerandaProps {
+  searchParams: Promise<{ q?: string }>
+}
+
+export default async function BerandaPage({ searchParams }: BerandaProps) {
   const start = performance.now()
+  const { q } = await searchParams
   const user = await getUser()
 
+  const favoritesQuery = user
+    ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } })
+    : Promise.resolve([])
+
+  // Mode pencarian: tampilkan hasil pencarian di beranda
+  if (q && q.trim()) {
+    const [searchResults, favorites] = await Promise.all([
+      prisma.book.findMany({
+        where: {
+          OR: [
+            { judul: { contains: q } },
+            { pengarang: { contains: q } },
+            { isbn: { contains: q } },
+            { kategori: { contains: q } },
+          ],
+        },
+        orderBy: { judul: 'asc' },
+      }),
+      favoritesQuery,
+    ])
+
+    const favIds = favorites.map(f => f.book_id)
+
+    console.log(`[Performance] Waktu Render Beranda (search): ${(performance.now() - start).toFixed(2)}ms`)
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {/* Search result header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Search size={18} color="#8B5CF6" />
+              <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1E293B' }}>
+                Hasil Pencarian
+              </h1>
+            </div>
+            <p style={{ color: '#64748B', fontSize: '0.875rem' }}>
+              Ditemukan <strong>{searchResults.length}</strong> buku untuk kata kunci &quot;<strong>{q}</strong>&quot;
+            </p>
+          </div>
+          <Link
+            href="/"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', borderRadius: 10, fontSize: '0.85rem',
+              fontWeight: 600, textDecoration: 'none',
+              background: '#F1F5F9', color: '#475569',
+              border: '1px solid #E2E8F0',
+            }}
+          >
+            <X size={14} /> Hapus pencarian
+          </Link>
+        </div>
+
+        {/* Search result bar (sticky visual) */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: '#F8FAFC', border: '2px solid #8B5CF6',
+          borderRadius: 12, padding: '10px 16px',
+        }}>
+          <Search size={16} color="#8B5CF6" />
+          <span style={{ fontSize: '0.9rem', color: '#1E293B', fontWeight: 500 }}>
+            {q}
+          </span>
+          <span style={{
+            marginLeft: 'auto', fontSize: '0.75rem', background: '#EDE9FE',
+            color: '#6D28D9', borderRadius: 20, padding: '2px 10px', fontWeight: 600,
+          }}>
+            {searchResults.length} hasil
+          </span>
+        </div>
+
+        <BookGrid books={searchResults} favoritedIds={favIds} emptyType="search" />
+      </div>
+    )
+  }
+
+  // Mode normal: tampilkan beranda
   const [rekomendasi, populer, terbaru, favorites] = await Promise.all([
     prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { created_at: 'desc' }, take: 6 }),
     prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { jumlah_eksemplar: 'desc' }, take: 6 }),
     prisma.book.findMany({ orderBy: { created_at: 'desc' }, take: 6 }),
-    user ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } }) : [],
+    favoritesQuery,
   ])
 
   const favIds = favorites.map(f => f.book_id)

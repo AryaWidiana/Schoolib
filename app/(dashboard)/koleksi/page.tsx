@@ -12,16 +12,20 @@ export default async function KoleksiPage({ searchParams }: KoleksiProps) {
   const { q, kategori } = await searchParams
   const user = await getUser()
 
-  const where: Prisma.BookWhereInput = { is_ebook: false }
-  
+  // Jika ada query pencarian, cari di semua buku (termasuk e-book)
+  // Jika tidak ada query, tampilkan buku fisik saja (default halaman koleksi)
+  // SQLite: mode 'insensitive' tidak didukung, tapi LIKE sudah case-insensitive untuk ASCII
+  const where: Prisma.BookWhereInput = q ? {} : { is_ebook: false }
+
   if (q) {
     where.OR = [
       { judul: { contains: q } },
       { pengarang: { contains: q } },
       { isbn: { contains: q } },
+      { kategori: { contains: q } },
     ]
   }
-  
+
   if (kategori) {
     where.kategori = kategori
   }

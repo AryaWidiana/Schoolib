@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { BookOpen, Users, BarChart2, LogOut, Home, BookMarked, ArrowLeftRight, AlertCircle, GraduationCap } from 'lucide-react'
+import { BookOpen, Users, LogOut, Home, BookMarked, ArrowLeftRight, AlertCircle, GraduationCap } from 'lucide-react'
 import { logout } from '@/actions/auth'
 
 const navItems = [
@@ -59,16 +59,6 @@ export function PetugasSidebar({ pathname }: { pathname: string }) {
           })}
         </ul>
 
-        <div style={{ margin: '16px 8px', height: 1, background: '#F1F5F9' }} />
-        <Link href="/qa-testing" style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 12px', borderRadius: 10, textDecoration: 'none',
-          fontWeight: 500, fontSize: '0.875rem', color: '#7C3AED',
-          background: pathname === '/qa-testing' ? '#F3E8FF' : 'transparent',
-        }}>
-          <BarChart2 size={18} strokeWidth={2} />
-          QA Testing
-        </Link>
       </nav>
 
       <div style={{ padding: '12px', borderTop: '1px solid #F1F5F9' }}>

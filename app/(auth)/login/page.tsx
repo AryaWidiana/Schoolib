@@ -24,7 +24,8 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #EEF2FF 0%, #DBEAFE 50%, #F0F9FF 100%)',
+      background: 'url(/assets/login-bg.webp) no-repeat center center',
+      backgroundSize: 'cover',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '24px',
     }}>
@@ -88,14 +89,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Demo accounts info */}
-            <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0369A1', marginBottom: 6 }}>Akun Demo:</div>
-              <div style={{ fontSize: '0.72rem', color: '#0369A1', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <div>👤 <strong>Petugas:</strong> petugas@schoolib.ac.id / Petugas123!</div>
-                <div>📚 <strong>Anggota:</strong> budi@schoolib.ac.id / Anggota123!</div>
-              </div>
-            </div>
 
             <button type="submit" disabled={pending} className="schoolib-btn-primary" style={{ padding: '13px', fontSize: '0.95rem' }}>
               {pending ? (

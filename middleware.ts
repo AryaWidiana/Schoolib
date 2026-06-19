@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { verifySession } from '@/lib/session'
 
 export async function middleware(request: NextRequest) {
+  const start = performance.now()
   const { pathname } = request.nextUrl
 
   // Public routes that don't require auth
@@ -14,6 +15,7 @@ export async function middleware(request: NextRequest) {
   if (!session && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    console.log(`[Performance] Middleware Execution Time (redirect to login): ${(performance.now() - start).toFixed(2)}ms`)
     return NextResponse.redirect(url)
   }
 
@@ -21,6 +23,7 @@ export async function middleware(request: NextRequest) {
   if (session && (pathname === '/login' || pathname === '/register')) {
     const url = request.nextUrl.clone()
     url.pathname = session.role === 'petugas' ? '/petugas/dashboard' : '/'
+    console.log(`[Performance] Middleware Execution Time (redirect to dashboard): ${(performance.now() - start).toFixed(2)}ms`)
     return NextResponse.redirect(url)
   }
 
@@ -29,10 +32,12 @@ export async function middleware(request: NextRequest) {
     if (session.role !== 'petugas') {
       const url = request.nextUrl.clone()
       url.pathname = '/'
+      console.log(`[Performance] Middleware Execution Time (guard petugas): ${(performance.now() - start).toFixed(2)}ms`)
       return NextResponse.redirect(url)
     }
   }
 
+  console.log(`[Performance] Middleware Execution Time (next): ${(performance.now() - start).toFixed(2)}ms`)
   return NextResponse.next()
 }
 

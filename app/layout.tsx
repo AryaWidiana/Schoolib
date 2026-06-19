@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: 'SchooLib — School Online Library',
   description: 'Sistem Perpustakaan Digital Sekolah & Kampus — Kelola peminjaman, koleksi buku, dan riwayat dengan mudah.',
   keywords: 'perpustakaan digital, sekolah, kampus, peminjaman buku, koleksi buku',
+  icons: {
+    icon: '/icon.webp',
+  },
   openGraph: {
     title: 'SchooLib — School Online Library',
     description: 'Sistem Perpustakaan Digital Sekolah & Kampus',

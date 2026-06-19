@@ -27,7 +27,7 @@ export default function RegisterPage() {
 
   if (done) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #EEF2FF, #DBEAFE, #F0F9FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ minHeight: '100vh', background: 'url(/assets/login-bg.webp) no-repeat center center', backgroundSize: 'cover', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div className="animate-fade-in-up" style={{ background: 'white', borderRadius: 20, padding: 40, maxWidth: 400, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(29,42,138,0.12)' }}>
           <div style={{ fontSize: '3rem', marginBottom: 16 }}>📬</div>
           <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1D2A8A', marginBottom: 8 }}>Cek Email Anda!</h2>
@@ -39,7 +39,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #EEF2FF 0%, #DBEAFE 50%, #F0F9FF 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div style={{ minHeight: '100vh', background: 'url(/assets/login-bg.webp) no-repeat center center', backgroundSize: 'cover', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div className="animate-fade-in-up" style={{ width: '100%', maxWidth: 440 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg, #1D2A8A, #3B5BDB)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', boxShadow: '0 8px 24px rgba(29,42,138,0.3)' }}>

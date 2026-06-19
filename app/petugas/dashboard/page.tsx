@@ -4,6 +4,7 @@ import { formatRupiah } from '@/lib/utils'
 import Link from 'next/link'
 
 export default async function PetugasDashboard() {
+  const start = performance.now()
   const stats = await getDashboardStats()
 
   const cards = [
@@ -12,6 +13,8 @@ export default async function PetugasDashboard() {
     { label: 'Pinjaman Aktif', value: stats.activeLoans, icon: Clock, color: '#0EA5E9', bg: '#F0F9FF', href: '/petugas/peminjaman' },
     { label: 'Terlambat', value: stats.overdueLoans, icon: AlertCircle, color: '#EF4444', bg: '#FEF2F2', href: '/petugas/pengembalian' },
   ]
+
+  console.log(`[Performance] Waktu Render Dashboard Petugas: ${(performance.now() - start).toFixed(2)}ms`)
 
   return (
     <div>

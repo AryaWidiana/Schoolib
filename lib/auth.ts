@@ -1,9 +1,10 @@
 import { prisma } from '@/lib/prisma'
 import { verifySession } from './session'
+import { cache } from 'react'
 
 export * from './session'
 
-export async function getUser() {
+export const getUser = cache(async () => {
   const session = await verifySession()
   if (!session) return null
 
@@ -16,4 +17,4 @@ export async function getUser() {
   } catch {
     return null
   }
-}
+})

@@ -5,6 +5,7 @@ import { BookOpen, TrendingUp, Sparkles, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function BerandaPage() {
+  const start = performance.now()
   const user = await getUser()
 
   const [rekomendasi, populer, terbaru, favorites] = await Promise.all([
@@ -15,6 +16,8 @@ export default async function BerandaPage() {
   ])
 
   const favIds = favorites.map(f => f.book_id)
+
+  console.log(`[Performance] Waktu Render Dashboard Anggota: ${(performance.now() - start).toFixed(2)}ms`)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>

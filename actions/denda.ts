@@ -109,18 +109,18 @@ export async function toggleMemberStatus(userId: string): Promise<ActionResult> 
 
 // Get dashboard stats (petugas)
 export async function getDashboardStats() {
-  const [totalBooks, totalMembers, activeLoans, overdueLoans, membersWithFines] = await Promise.all([
+  const [totalBooks, totalMembers, activeLoans, overdueLoans, finesAgg] = await Promise.all([
     prisma.book.count(),
     prisma.profile.count({ where: { role: 'anggota' } }),
     prisma.loan.count({ where: { status: 'dipinjam' } }),
     prisma.loan.count({ where: { status: 'terlambat' } }),
-    prisma.profile.findMany({
+    prisma.profile.aggregate({
       where: { role: 'anggota', total_denda: { gt: 0 } },
-      select: { total_denda: true }
+      _sum: { total_denda: true }
     })
   ])
 
-  const totalFines = membersWithFines.reduce((sum, p) => sum + p.total_denda, 0)
+  const totalFines = finesAgg._sum.total_denda || 0
 
   return {
     totalBooks,

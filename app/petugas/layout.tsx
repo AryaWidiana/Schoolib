@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 
 export default async function PetugasLayout({ children }: { children: React.ReactNode }) {
   const profile = await getUser()
-  if (!profile) redirect('/login')
+  if (!profile) redirect('/api/auth/clear-session')
 
   if (profile.role !== 'petugas') redirect('/')
 

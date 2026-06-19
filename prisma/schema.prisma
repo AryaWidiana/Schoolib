@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Profile {
+  id            String         @id @default(uuid())
+  full_name     String
+  email         String         @unique
+  password_hash String
+  role          String         @default("anggota")
+  status        String         @default("aktif")
+  total_denda   Int            @default(0)
+  avatar_url    String?
+  nim           String?
+  phone         String?
+  created_at    DateTime       @default(now())
+  favorites     Favorite[]
+  loans         Loan[]
+  notifications Notification[]
+
+  @@map("profiles")
+}
+
+model Book {
+  id               String     @id @default(uuid())
+  judul            String
+  pengarang        String
+  isbn             String     @unique
+  penerbit         String?
+  tahun_terbit     Int?
+  kategori         String?
+  deskripsi        String?
+  cover_url        String?
+  is_ebook         Boolean    @default(false)
+  ebook_url        String?
+  jumlah_eksemplar Int        @default(1)
+  stok_tersedia    Int        @default(1)
+  created_at       DateTime   @default(now())
+  favorites        Favorite[]
+  loans            Loan[]
+
+  @@map("books")
+}
+
+model Loan {
+  id                  String    @id @default(uuid())
+  user_id             String
+  book_id             String
+  tanggal_pinjam      DateTime  @default(now())
+  tanggal_jatuh_tempo DateTime
+  tanggal_kembali     DateTime?
+  status              String    @default("dipinjam")
+  sudah_diperpanjang  Boolean   @default(false)
+  hari_telat          Int       @default(0)
+  denda               Int       @default(0)
+  created_at          DateTime  @default(now())
+  book                Book      @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  profile             Profile   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("loans")
+}
+
+model Favorite {
+  id         String   @id @default(uuid())
+  user_id    String
+  book_id    String
+  created_at DateTime @default(now())
+  book       Book     @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  profile    Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, book_id])
+  @@map("favorites")
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  user_id    String
+  title      String
+  message    String
+  type       String   @default("info")
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+  profile    Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}

@@ -1,26 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
+import { getMyLoans } from '@/actions/loans'
 import { LoanCard } from '@/components/loans/loan-card'
 import { EmptyState } from '@/components/shared/empty-state'
-import { StatusBadge } from '@/components/shared/status-badge'
 import { Clock } from 'lucide-react'
-import { redirect } from 'next/navigation'
-import type { LoanWithBook } from '@/types'
 
 export default async function RiwayatPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  // Refresh overdue status
-  await supabase.rpc('update_overdue_loans')
-
-  const { data: loans } = await supabase
-    .from('loans')
-    .select('*, books(*)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  const allLoans = (loans as LoanWithBook[]) ?? []
+  const allLoans = await getMyLoans()
   const active = allLoans.filter(l => l.status !== 'dikembalikan')
   const history = allLoans.filter(l => l.status === 'dikembalikan')
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
 import { toast } from 'sonner'
 import { formatDate, formatRupiah } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -14,7 +14,7 @@ interface LoanCardProps {
 
 export function LoanCard({ loan, showActions = true }: LoanCardProps) {
   const [pending, startTransition] = useTransition()
-  const book = loan.books
+  const book = loan.book
 
   const handleReturn = () => {
     startTransition(async () => {

@@ -12,15 +12,16 @@ export type LoanStatus = 'dipinjam' | 'terlambat' | 'dikembalikan'
 
 export interface Profile {
   id: string
+  email: string
+  password_hash?: string
   full_name: string
-  role: UserRole
-  status: UserStatus
+  role: string  // 'anggota' | 'petugas'
+  status: string  // 'aktif' | 'diblokir'
   total_denda: number
   avatar_url: string | null
   nim: string | null
   phone: string | null
-  created_at: string
-  updated_at: string
+  created_at: Date
 }
 
 export interface Book {
@@ -37,31 +38,28 @@ export interface Book {
   stok_tersedia: number
   is_ebook: boolean
   ebook_url: string | null
-  created_at: string
-  updated_at: string
+  created_at: Date
 }
 
 export interface Loan {
   id: string
   user_id: string
   book_id: string
-  tanggal_pinjam: string
-  tanggal_jatuh_tempo: string
-  tanggal_kembali: string | null
-  status: LoanStatus
+  tanggal_pinjam: Date
+  tanggal_jatuh_tempo: Date
+  tanggal_kembali: Date | null
+  status: string  // 'dipinjam' | 'terlambat' | 'dikembalikan'
   sudah_diperpanjang: boolean
   hari_telat: number
   denda: number
-  catatan: string | null
-  created_at: string
-  updated_at: string
+  created_at: Date
 }
 
 export interface Favorite {
   id: string
   user_id: string
   book_id: string
-  created_at: string
+  created_at: Date
 }
 
 export interface Notification {
@@ -71,7 +69,7 @@ export interface Notification {
   message: string
   is_read: boolean
   type: 'info' | 'warning' | 'success' | 'error'
-  created_at: string
+  created_at: Date
 }
 
 // ============================================================
@@ -79,20 +77,20 @@ export interface Notification {
 // ============================================================
 
 export interface LoanWithBook extends Loan {
-  books: Book
+  book: Book
 }
 
 export interface LoanWithProfile extends Loan {
-  profiles: Profile
+  profile: Profile
 }
 
 export interface LoanWithBookAndProfile extends Loan {
-  books: Book
-  profiles: Profile
+  book: Book
+  profile: Profile
 }
 
 export interface FavoriteWithBook extends Favorite {
-  books: Book
+  book: Book
 }
 
 // ============================================================

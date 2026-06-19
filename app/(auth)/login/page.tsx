@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { GraduationCap, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'

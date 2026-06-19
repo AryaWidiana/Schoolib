@@ -1,20 +1,21 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
+import { getUser } from '@/lib/auth'
 import type { ActionResult, Profile } from '@/types'
 
 // Pay / clear fine for a member
 export async function payFine(userId: string, amount: number): Promise<ActionResult> {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) return { success: false, message: 'Tidak terautentikasi.' }
+  if (user.role !== 'petugas') return { success: false, message: 'Akses ditolak.' }
 
-  const { data: profile } = (await supabase.from('profiles').select('role').eq('id', user.id).single()) as any
-  if (profile?.role !== 'petugas') return { success: false, message: 'Akses ditolak.' }
+  const member = await prisma.profile.findUnique({
+    where: { id: userId },
+    select: { id: true, total_denda: true }
+  })
 
-  const { data: member } = (await supabase.from('profiles').select('total_denda').eq('id', userId).single()) as any
   if (!member) return { success: false, message: 'Anggota tidak ditemukan.' }
 
   if (amount > member.total_denda) {
@@ -22,66 +23,73 @@ export async function payFine(userId: string, amount: number): Promise<ActionRes
   }
 
   const newTotal = member.total_denda - amount
-  const { error } = await (supabase.from('profiles') as any)
-    .update({ total_denda: newTotal })
-    .eq('id', userId)
 
-  if (error) return { success: false, message: error.message }
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.profile.update({
+        where: { id: userId },
+        data: { 
+          total_denda: newTotal,
+          status: newTotal === 0 ? 'aktif' : undefined // Auto-aktif if fines cleared
+        }
+      })
 
-  // Add notification to member
-  await (supabase.from('notifications') as any).insert({
-    user_id: userId,
-    title: 'Pembayaran Denda',
-    message: `Denda sebesar Rp ${amount.toLocaleString('id-ID')} telah dibayar. Sisa denda: Rp ${newTotal.toLocaleString('id-ID')}.`,
-    type: 'success',
-  })
+      await tx.notification.create({
+        data: {
+          user_id: userId,
+          title: 'Pembayaran Denda',
+          message: `Denda sebesar Rp ${amount.toLocaleString('id-ID')} telah dibayar. Sisa denda: Rp ${newTotal.toLocaleString('id-ID')}.`,
+          type: 'success',
+        }
+      })
+    })
 
-  revalidatePath('/petugas/denda')
-  revalidatePath('/petugas/anggota')
+    revalidatePath('/petugas/denda')
+    revalidatePath('/petugas/anggota')
 
-  return {
-    success: true,
-    message: `Pembayaran Rp ${amount.toLocaleString('id-ID')} berhasil. Sisa denda: Rp ${newTotal.toLocaleString('id-ID')}.`,
+    return {
+      success: true,
+      message: `Pembayaran Rp ${amount.toLocaleString('id-ID')} berhasil. Sisa denda: Rp ${newTotal.toLocaleString('id-ID')}.`,
+    }
+  } catch (error: any) {
+    return { success: false, message: error.message }
   }
 }
 
 // Get all members with fines (petugas)
-export async function getMembersWithFines(): Promise<Profile[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('role', 'anggota')
-    .gt('total_denda', 0)
-    .order('total_denda', { ascending: false })
+export async function getMembersWithFines() {
+  const members = await prisma.profile.findMany({
+    where: {
+      role: 'anggota',
+      total_denda: { gt: 0 }
+    },
+    orderBy: { total_denda: 'desc' }
+  })
 
-  if (error) return []
-  return data ?? []
+  return members
 }
 
 // Get all members (petugas)
-export async function getAllMembers(): Promise<Profile[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('role', 'anggota')
-    .order('full_name', { ascending: true })
+export async function getAllMembers() {
+  const members = await prisma.profile.findMany({
+    where: { role: 'anggota' },
+    orderBy: { full_name: 'asc' }
+  })
 
-  if (error) return []
-  return data ?? []
+  return members
 }
 
 // Block / unblock member (petugas)
 export async function toggleMemberStatus(userId: string): Promise<ActionResult> {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) return { success: false, message: 'Tidak terautentikasi.' }
-  const { data: requestor } = (await supabase.from('profiles').select('role').eq('id', user.id).single()) as any
-  if (requestor?.role !== 'petugas') return { success: false, message: 'Akses ditolak.' }
+  if (user.role !== 'petugas') return { success: false, message: 'Akses ditolak.' }
 
-  const { data: member } = (await supabase.from('profiles').select('status, total_denda').eq('id', userId).single()) as any
+  const member = await prisma.profile.findUnique({
+    where: { id: userId },
+    select: { status: true, total_denda: true }
+  })
+
   if (!member) return { success: false, message: 'Anggota tidak ditemukan.' }
 
   // FR-P-7: Diblokir → Aktif hanya jika total_denda = 0
@@ -89,11 +97,11 @@ export async function toggleMemberStatus(userId: string): Promise<ActionResult> 
     if (member.total_denda > 0) {
       return { success: false, message: 'Anggota tidak dapat diaktifkan karena masih memiliki denda.' }
     }
-    await (supabase.from('profiles') as any).update({ status: 'aktif' }).eq('id', userId)
+    await prisma.profile.update({ where: { id: userId }, data: { status: 'aktif' } })
     revalidatePath('/petugas/anggota')
     return { success: true, message: 'Status anggota berhasil diaktifkan.' }
   } else {
-    await (supabase.from('profiles') as any).update({ status: 'diblokir' }).eq('id', userId)
+    await prisma.profile.update({ where: { id: userId }, data: { status: 'diblokir' } })
     revalidatePath('/petugas/anggota')
     return { success: true, message: 'Status anggota berhasil diblokir.' }
   }
@@ -101,30 +109,33 @@ export async function toggleMemberStatus(userId: string): Promise<ActionResult> 
 
 // Get dashboard stats (petugas)
 export async function getDashboardStats() {
-  const supabase = await createClient()
-
-  const [books, members, activeLoans, overdueLoans, fines] = await Promise.all([
-    supabase.from('books').select('*', { count: 'exact', head: true }),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'anggota'),
-    supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'dipinjam'),
-    supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'terlambat'),
-    supabase.from('profiles').select('total_denda').eq('role', 'anggota'),
+  const [totalBooks, totalMembers, activeLoans, overdueLoans, membersWithFines] = await Promise.all([
+    prisma.book.count(),
+    prisma.profile.count({ where: { role: 'anggota' } }),
+    prisma.loan.count({ where: { status: 'dipinjam' } }),
+    prisma.loan.count({ where: { status: 'terlambat' } }),
+    prisma.profile.findMany({
+      where: { role: 'anggota', total_denda: { gt: 0 } },
+      select: { total_denda: true }
+    })
   ])
 
-  const totalFines = (fines.data ?? []).reduce((sum, p: any) => sum + p.total_denda, 0)
+  const totalFines = membersWithFines.reduce((sum, p) => sum + p.total_denda, 0)
 
   return {
-    totalBooks: books.count ?? 0,
-    totalMembers: members.count ?? 0,
-    activeLoans: activeLoans.count ?? 0,
-    overdueLoans: overdueLoans.count ?? 0,
+    totalBooks,
+    totalMembers,
+    activeLoans,
+    overdueLoans,
     totalFines,
   }
 }
 
 // Mark notification as read
 export async function markNotificationRead(notifId: string): Promise<void> {
-  const supabase = await createClient()
-  await (supabase.from('notifications') as any).update({ is_read: true }).eq('id', notifId)
+  await prisma.notification.update({
+    where: { id: notifId },
+    data: { is_read: true }
+  })
   revalidatePath('/', 'layout')
 }

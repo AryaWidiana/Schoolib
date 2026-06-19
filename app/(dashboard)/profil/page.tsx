@@ -1,16 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import { User, Mail, Hash, Phone, Clock, ShieldAlert } from 'lucide-react'
+import { Mail, Hash, Phone, ShieldAlert } from 'lucide-react'
 import { formatRupiah } from '@/lib/utils'
 
 export default async function ProfilPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = (await supabase.from('profiles').select('*').eq('id', user.id).single()) as any
-  if (!profile) return null
+  const profile = await getUser()
+  if (!profile) redirect('/login')
 
   const isPetugas = profile.role === 'petugas'
 
@@ -45,7 +40,7 @@ export default async function ProfilPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {[
-            { icon: Mail, label: 'Email', value: user.email },
+            { icon: Mail, label: 'Email', value: profile.email },
             { icon: Hash, label: 'NIM/NIS', value: profile.nim || '-' },
             { icon: Phone, label: 'No. HP', value: profile.phone || '-' },
           ].map(({ icon: Icon, label, value }) => (

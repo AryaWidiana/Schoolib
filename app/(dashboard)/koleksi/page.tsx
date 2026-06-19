@@ -1,4 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { BookGrid } from '@/components/books/book-grid'
 import { Search, Filter } from 'lucide-react'
 
@@ -8,21 +10,30 @@ interface KoleksiProps {
 
 export default async function KoleksiPage({ searchParams }: KoleksiProps) {
   const { q, kategori } = await searchParams
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
 
-  let query = supabase.from('books').select('*').eq('is_ebook', false).order('judul')
-  if (q) query = query.or(`judul.ilike.%${q}%,pengarang.ilike.%${q}%,isbn.ilike.%${q}%`)
-  if (kategori) query = query.eq('kategori', kategori)
+  const where: Prisma.BookWhereInput = { is_ebook: false }
+  
+  if (q) {
+    where.OR = [
+      { judul: { contains: q } },
+      { pengarang: { contains: q } },
+      { isbn: { contains: q } },
+    ]
+  }
+  
+  if (kategori) {
+    where.kategori = kategori
+  }
 
-  const [{ data: books }, { data: categories }, { data: favorites }] = await Promise.all([
-    query,
-    supabase.from('books').select('kategori').not('kategori', 'is', null),
-    user ? supabase.from('favorites').select('book_id').eq('user_id', user.id) : { data: [] },
+  const [books, categories, favorites] = await Promise.all([
+    prisma.book.findMany({ where, orderBy: { judul: 'asc' } }),
+    prisma.book.findMany({ select: { kategori: true }, where: { kategori: { not: null } } }),
+    user ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } }) : [],
   ])
 
-  const cats = [...new Set((categories ?? []).map((c: { kategori: string }) => c.kategori))].sort()
-  const favIds = (favorites ?? []).map((f: { book_id: string }) => f.book_id)
+  const cats = [...new Set(categories.map(c => c.kategori as string))].sort()
+  const favIds = favorites.map(f => f.book_id)
 
   return (
     <div>

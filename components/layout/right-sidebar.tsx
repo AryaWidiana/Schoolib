@@ -1,4 +1,4 @@
-import { Calendar, Newspaper, AlertCircle, CheckCircle, Clock, BookOpen } from 'lucide-react'
+import { Calendar, Newspaper, AlertCircle, Clock, BookOpen } from 'lucide-react'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import type { Profile, LoanWithBook } from '@/types'
 
@@ -113,7 +113,7 @@ export function RightSidebar({ profile, activeLoans }: RightSidebarProps) {
           {overdueLoans.map(loan => (
             <div key={loan.id} style={{ fontSize: '0.75rem', color: '#7F1D1D', marginBottom: 4, display: 'flex', gap: 6 }}>
               <BookOpen size={12} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span>{loan.books?.judul}</span>
+              <span>{loan.book?.judul}</span>
             </div>
           ))}
         </div>
@@ -129,7 +129,7 @@ export function RightSidebar({ profile, activeLoans }: RightSidebarProps) {
           {upcomingLoans.map(loan => (
             <div key={loan.id} style={{ marginBottom: 8, padding: '8px 10px', background: '#F8FAFC', borderRadius: 8 }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1E293B', marginBottom: 2 }}>
-                {loan.books?.judul?.length > 28 ? loan.books.judul.slice(0, 28) + '…' : loan.books?.judul}
+                {loan.book?.judul?.length > 28 ? loan.book.judul.slice(0, 28) + '…' : loan.book?.judul}
               </div>
               <div style={{ fontSize: '0.7rem', color: '#94A3B8' }}>
                 {formatDate(loan.tanggal_jatuh_tempo)}

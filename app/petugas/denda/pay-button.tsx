@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { payFine } from '@/actions/denda'

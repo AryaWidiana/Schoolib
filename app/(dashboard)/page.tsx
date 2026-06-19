@@ -1,20 +1,20 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { BookGrid } from '@/components/books/book-grid'
 import { BookOpen, TrendingUp, Sparkles, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function BerandaPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
 
-  const [{ data: rekomendasi }, { data: populer }, { data: terbaru }, { data: favorites }] = await Promise.all([
-    supabase.from('books').select('*').gt('stok_tersedia', 0).order('created_at', { ascending: false }).limit(6),
-    supabase.from('books').select('*').gt('stok_tersedia', 0).order('jumlah_eksemplar', { ascending: false }).limit(6),
-    supabase.from('books').select('*').order('created_at', { ascending: false }).limit(6),
-    user ? supabase.from('favorites').select('book_id').eq('user_id', user.id) : { data: [] },
+  const [rekomendasi, populer, terbaru, favorites] = await Promise.all([
+    prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { created_at: 'desc' }, take: 6 }),
+    prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { jumlah_eksemplar: 'desc' }, take: 6 }),
+    prisma.book.findMany({ orderBy: { created_at: 'desc' }, take: 6 }),
+    user ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } }) : [],
   ])
 
-  const favIds = (favorites ?? []).map((f: { book_id: string }) => f.book_id)
+  const favIds = favorites.map(f => f.book_id)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>

@@ -1,30 +1,36 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import { BookOpen, ArrowLeft, Calendar, Tag, Hash, Building, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { BorrowButton } from './borrow-button'
-import { formatDate } from '@/lib/utils'
 
 export default async function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) redirect('/login')
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const booksQuery: any = supabase.from('books')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const profilesQuery: any = supabase.from('profiles')
-
-  const { data: book } = await booksQuery.select('*').eq('id', id).single()
-  const { data: profile } = await profilesQuery.select('*').eq('id', user.id).single()
-  const { data: activeLoan } = await supabase.from('loans').select('id').eq('user_id', user.id).eq('book_id', id).in('status', ['dipinjam', 'terlambat']).maybeSingle()
-  const { data: favorite } = await supabase.from('favorites').select('id').eq('user_id', user.id).eq('book_id', id).maybeSingle()
+  const [book, activeLoan, favorite] = await Promise.all([
+    prisma.book.findUnique({ where: { id } }),
+    prisma.loan.findFirst({
+      where: {
+        user_id: user.id,
+        book_id: id,
+        status: { in: ['dipinjam', 'terlambat'] }
+      }
+    }),
+    prisma.favorite.findUnique({
+      where: {
+        user_id_book_id: { user_id: user.id, book_id: id }
+      }
+    })
+  ])
 
   if (!book) notFound()
 
   const alreadyBorrowed = !!activeLoan
   const isFavorited = !!favorite
+  const profile = user
 
   return (
     <div>

@@ -1,6 +1,6 @@
 import { getBooks } from '@/actions/books'
 import Link from 'next/link'
-import { Plus, Search, Edit, Trash2 } from 'lucide-react'
+import { Plus, Search, Edit } from 'lucide-react'
 import { DeleteBookButton } from './delete-button'
 
 export default async function KelolaBukuPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {

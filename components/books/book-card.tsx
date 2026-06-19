@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Heart, BookOpen, Clock, Star } from 'lucide-react'
+import { Heart, BookOpen } from 'lucide-react'
 import Link from 'next/link'
 import type { Book } from '@/types'
 import { getCoverGradient, getBookAvailability, truncate } from '@/lib/utils'

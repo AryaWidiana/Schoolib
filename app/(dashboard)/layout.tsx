@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Topbar } from '@/components/layout/topbar'
 import { RightSidebar } from '@/components/layout/right-sidebar'
@@ -6,33 +7,31 @@ import { redirect } from 'next/navigation'
 import type { LoanWithBook } from '@/types'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
 
   if (!user) redirect('/login')
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = (await supabase.from('profiles').select('*').eq('id', user.id).single()) as any
-
   // If petugas, redirect to petugas dashboard
-  if (profile?.role === 'petugas') redirect('/petugas/dashboard')
+  if (user.role === 'petugas') redirect('/petugas/dashboard')
 
   // Get active loans for right sidebar
-  const { data: activeLoans } = await supabase
-    .from('loans')
-    .select('*, books(*)')
-    .eq('user_id', user.id)
-    .in('status', ['dipinjam', 'terlambat'])
-    .order('tanggal_jatuh_tempo', { ascending: true })
+  const activeLoans = await prisma.loan.findMany({
+    where: {
+      user_id: user.id,
+      status: { in: ['dipinjam', 'terlambat'] }
+    },
+    include: { book: true },
+    orderBy: { tanggal_jatuh_tempo: 'asc' }
+  })
 
   return (
     <div className="dashboard-layout">
       <Sidebar />
-      <Topbar profile={profile} />
+      <Topbar profile={user} />
       <main className="dashboard-main" style={{ padding: '24px' }}>
         {children}
       </main>
-      <RightSidebar profile={profile} activeLoans={(activeLoans as LoanWithBook[]) ?? []} />
+      <RightSidebar profile={user} activeLoans={(activeLoans as unknown as LoanWithBook[]) ?? []} />
     </div>
   )
 }

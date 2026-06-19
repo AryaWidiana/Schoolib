@@ -1,15 +1,26 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
 import { createLoanSchema, returnLoanSchema, extendLoanSchema } from '@/lib/validations/loan'
 import { getTodayString } from '@/lib/utils'
-import type { ActionResult, Loan, LoanWithBook, LoanWithBookAndProfile, LoanFilterParams } from '@/types'
+import type { ActionResult, LoanFilterParams } from '@/types'
+import { prisma } from '@/lib/prisma'
+import { getUser } from '@/lib/auth'
+
+async function updateOverdueLoans() {
+  const today = new Date(getTodayString())
+  await prisma.loan.updateMany({
+    where: {
+      status: 'dipinjam',
+      tanggal_jatuh_tempo: { lt: today }
+    },
+    data: { status: 'terlambat' }
+  })
+}
 
 // ── FR-P-4: Create Loan ──────────────────────────────────────
-export async function createLoan(formData: FormData): Promise<ActionResult<Loan>> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export async function createLoan(formData: FormData): Promise<ActionResult> {
+  const user = await getUser()
   if (!user) return { success: false, message: 'Tidak terautentikasi.' }
 
   const raw = {
@@ -23,85 +34,86 @@ export async function createLoan(formData: FormData): Promise<ActionResult<Loan>
   const { book_id, user_id } = parsed.data
   const targetUserId = user_id ?? user.id
 
-  // Get member profile
-  const { data: profile } = (await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', targetUserId)
-    .single()) as any
+  try {
+    const loan = await prisma.$transaction(async (tx) => {
+      const profile = await tx.profile.findUnique({ where: { id: targetUserId } })
+      if (!profile) throw new Error('Profil anggota tidak ditemukan.')
 
-  if (!profile) return { success: false, message: 'Profil anggota tidak ditemukan.' }
+      // FR-P-4 Rule 3: Status anggota diblokir
+      if (profile.status === 'diblokir') {
+        throw new Error('Peminjaman ditolak: Akun anggota sedang diblokir karena memiliki denda.')
+      }
 
-  // FR-P-4 Rule 3: Status anggota diblokir
-  if (profile.status === 'diblokir') {
-    return { success: false, message: 'Peminjaman ditolak: Akun anggota sedang diblokir karena memiliki denda.' }
-  }
+      // FR-P-4 Rule 2: Memiliki denda > 0
+      if (profile.total_denda > 0) {
+        throw new Error(`Peminjaman ditolak: Anggota memiliki denda sebesar Rp ${profile.total_denda.toLocaleString('id-ID')}.`)
+      }
 
-  // FR-P-4 Rule 2: Memiliki denda > 0
-  if (profile.total_denda > 0) {
-    return { success: false, message: `Peminjaman ditolak: Anggota memiliki denda sebesar Rp ${profile.total_denda.toLocaleString('id-ID')}.` }
-  }
+      // FR-P-4 Rule 1: Maksimal 3 pinjaman aktif
+      const activeCount = await tx.loan.count({
+        where: {
+          user_id: targetUserId,
+          status: { in: ['dipinjam', 'terlambat'] }
+        }
+      })
 
-  // FR-P-4 Rule 1: Maksimal 3 pinjaman aktif
-  const { count: activeCount } = await supabase
-    .from('loans')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', targetUserId)
-    .in('status', ['dipinjam', 'terlambat'])
+      if (activeCount >= 3) {
+        throw new Error('Peminjaman ditolak: Anggota sudah memiliki 3 pinjaman aktif.')
+      }
 
-  if ((activeCount ?? 0) >= 3) {
-    return { success: false, message: 'Peminjaman ditolak: Anggota sudah memiliki 3 pinjaman aktif.' }
-  }
+      // FR-P-4 Rule 4: Stok buku = 0
+      const book = await tx.book.findUnique({ where: { id: book_id } })
+      if (!book) throw new Error('Buku tidak ditemukan.')
+      if (book.stok_tersedia <= 0) {
+        throw new Error('Peminjaman ditolak: Stok buku tidak tersedia.')
+      }
 
-  // FR-P-4 Rule 4: Stok buku = 0
-  const { data: book } = (await supabase.from('books').select('*').eq('id', book_id).single()) as any
-  if (!book) return { success: false, message: 'Buku tidak ditemukan.' }
-  if (book.stok_tersedia <= 0) {
-    return { success: false, message: 'Peminjaman ditolak: Stok buku tidak tersedia.' }
-  }
+      const today = new Date(getTodayString())
+      const dueDate = new Date(today)
+      dueDate.setDate(dueDate.getDate() + 7)
 
-  // Create loan record
-  const today = getTodayString()
-  const dueDate = new Date(today)
-  dueDate.setDate(dueDate.getDate() + 7)
-  const dueDateStr = dueDate.toISOString().split('T')[0]
+      // Decrease stock
+      await tx.book.update({
+        where: { id: book_id },
+        data: { stok_tersedia: book.stok_tersedia - 1 }
+      })
 
-  const { data: loan, error: loanError } = await (supabase.from('loans') as any)
-    .insert({
-      user_id: targetUserId,
-      book_id,
-      tanggal_pinjam: today,
-      tanggal_jatuh_tempo: dueDateStr,
-      status: 'dipinjam',
+      // Create loan record
+      const newLoan = await tx.loan.create({
+        data: {
+          user_id: targetUserId,
+          book_id,
+          tanggal_pinjam: today,
+          tanggal_jatuh_tempo: dueDate,
+          status: 'dipinjam',
+        }
+      })
+
+      // Send notification
+      await tx.notification.create({
+        data: {
+          user_id: targetUserId,
+          title: 'Peminjaman Berhasil',
+          message: `Buku "${book.judul}" berhasil dipinjam. Jatuh tempo: ${dueDate.toISOString().split('T')[0]}.`,
+          type: 'success',
+        }
+      })
+
+      return newLoan
     })
-    .select()
-    .single()
 
-  if (loanError) return { success: false, message: loanError.message }
-
-  // Decrease stock
-  await (supabase.from('books') as any)
-    .update({ stok_tersedia: book.stok_tersedia - 1 })
-    .eq('id', book_id)
-
-  // Send notification
-  await (supabase.from('notifications') as any).insert({
-    user_id: targetUserId,
-    title: 'Peminjaman Berhasil',
-    message: `Buku "${book.judul}" berhasil dipinjam. Jatuh tempo: ${dueDateStr}.`,
-    type: 'success',
-  })
-
-  revalidatePath('/riwayat')
-  revalidatePath('/petugas/peminjaman')
-  revalidatePath('/koleksi')
-  return { success: true, message: `Peminjaman berhasil! Jatuh tempo: ${dueDateStr}.`, data: loan }
+    revalidatePath('/riwayat')
+    revalidatePath('/petugas/peminjaman')
+    revalidatePath('/koleksi')
+    return { success: true, message: `Peminjaman berhasil! Jatuh tempo: ${loan.tanggal_jatuh_tempo.toISOString().split('T')[0]}.` }
+  } catch (error: any) {
+    return { success: false, message: error.message }
+  }
 }
 
 // ── FR-P-5: Return Book ──────────────────────────────────────
 export async function returnBook(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) return { success: false, message: 'Tidak terautentikasi.' }
 
   const raw = {
@@ -114,108 +126,154 @@ export async function returnBook(formData: FormData): Promise<ActionResult> {
 
   const { loan_id, tanggal_kembali } = parsed.data
 
-  const { data: result, error } = await (supabase.rpc as any)('process_book_return', {
-    p_loan_id: loan_id,
-    p_tanggal_kembali: tanggal_kembali,
-  })
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const loan = await tx.loan.findUnique({ where: { id: loan_id } })
+      if (!loan) throw new Error('Peminjaman tidak ditemukan')
+      if (loan.status === 'dikembalikan') throw new Error('Buku sudah dikembalikan')
 
-  if (error) return { success: false, message: error.message }
+      const returnDate = new Date(tanggal_kembali)
+      const dueDate = new Date(loan.tanggal_jatuh_tempo)
+      
+      const diffTime = returnDate.getTime() - dueDate.getTime()
+      let hari_telat = 0
+      
+      if (diffTime > 0) {
+        hari_telat = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      }
+      
+      const denda = hari_telat * 1000
 
-  const { hari_telat, denda } = result as { hari_telat: number; denda: number }
+      await tx.loan.update({
+        where: { id: loan_id },
+        data: {
+          tanggal_kembali: returnDate,
+          status: 'dikembalikan',
+          hari_telat,
+          denda
+        }
+      })
 
-  let message = 'Pengembalian berhasil!'
-  if (denda > 0) {
-    message += ` Denda keterlambatan ${hari_telat} hari: Rp ${denda.toLocaleString('id-ID')}.`
+      await tx.book.update({
+        where: { id: loan.book_id },
+        data: { stok_tersedia: { increment: 1 } }
+      })
+
+      if (denda > 0) {
+        await tx.profile.update({
+          where: { id: loan.user_id },
+          data: { total_denda: { increment: denda } }
+        })
+      }
+
+      return { hari_telat, denda }
+    })
+
+    const { hari_telat, denda } = result
+
+    let message = 'Pengembalian berhasil!'
+    if (denda > 0) {
+      message += ` Denda keterlambatan ${hari_telat} hari: Rp ${denda.toLocaleString('id-ID')}.`
+    }
+
+    revalidatePath('/riwayat')
+    revalidatePath('/petugas/pengembalian')
+    revalidatePath('/petugas/peminjaman')
+    revalidatePath('/koleksi')
+    return { success: true, message }
+  } catch (error: any) {
+    return { success: false, message: error.message }
   }
-
-  revalidatePath('/riwayat')
-  revalidatePath('/petugas/pengembalian')
-  revalidatePath('/petugas/peminjaman')
-  revalidatePath('/koleksi')
-  return { success: true, message }
 }
 
 // ── FR-P-6: Extend Loan ──────────────────────────────────────
 export async function extendLoan(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) return { success: false, message: 'Tidak terautentikasi.' }
 
   const raw = { loan_id: formData.get('loan_id') as string }
   const parsed = extendLoanSchema.safeParse(raw)
   if (!parsed.success) return { success: false, message: parsed.error.issues[0].message }
 
-  // Also check from application layer (belt-and-suspenders)
-  const { data: loan } = (await supabase.from('loans').select('*').eq('id', parsed.data.loan_id).single()) as any
-  if (!loan) return { success: false, message: 'Peminjaman tidak ditemukan.' }
-  if (loan.sudah_diperpanjang) return { success: false, message: 'Perpanjangan ditolak: Sudah pernah diperpanjang (maksimal 1 kali).' }
-  if (loan.status === 'terlambat') return { success: false, message: 'Perpanjangan ditolak: Peminjaman sudah terlambat.' }
-  if (loan.status === 'dikembalikan') return { success: false, message: 'Perpanjangan ditolak: Buku sudah dikembalikan.' }
+  try {
+    await prisma.$transaction(async (tx) => {
+      const loan = await tx.loan.findUnique({ where: { id: parsed.data.loan_id } })
+      if (!loan) throw new Error('Peminjaman tidak ditemukan.')
+      if (loan.sudah_diperpanjang) throw new Error('Perpanjangan ditolak: Sudah pernah diperpanjang (maksimal 1 kali).')
+      if (loan.status === 'terlambat') throw new Error('Perpanjangan ditolak: Peminjaman sudah terlambat.')
+      if (loan.status === 'dikembalikan') throw new Error('Perpanjangan ditolak: Buku sudah dikembalikan.')
 
-  const { error } = await (supabase.rpc as any)('extend_loan', { p_loan_id: parsed.data.loan_id })
-  if (error) return { success: false, message: error.message }
+      const newDueDate = new Date(loan.tanggal_jatuh_tempo)
+      newDueDate.setDate(newDueDate.getDate() + 7)
 
-  revalidatePath('/riwayat')
-  revalidatePath('/petugas/peminjaman')
-  return { success: true, message: 'Peminjaman berhasil diperpanjang +7 hari.' }
+      await tx.loan.update({
+        where: { id: parsed.data.loan_id },
+        data: {
+          tanggal_jatuh_tempo: newDueDate,
+          sudah_diperpanjang: true
+        }
+      })
+    })
+
+    revalidatePath('/riwayat')
+    revalidatePath('/petugas/peminjaman')
+    return { success: true, message: 'Peminjaman berhasil diperpanjang +7 hari.' }
+  } catch (error: any) {
+    return { success: false, message: error.message }
+  }
 }
 
 // ── Get Loans (Anggota) ──────────────────────────────────────
-export async function getMyLoans(): Promise<LoanWithBook[]> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export async function getMyLoans() {
+  const user = await getUser()
   if (!user) return []
 
-  // Update overdue loans first
-  await (supabase.rpc as any)('update_overdue_loans')
+  await updateOverdueLoans()
 
-  const { data, error } = await supabase
-    .from('loans')
-    .select('*, books(*)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+  const loans = await prisma.loan.findMany({
+    where: { user_id: user.id },
+    include: { book: true },
+    orderBy: { created_at: 'desc' }
+  })
 
-  if (error) return []
-  return (data as LoanWithBook[]) ?? []
+  return loans
 }
 
 // ── Get All Loans (Petugas) ──────────────────────────────────
-export async function getAllLoans(params: LoanFilterParams = {}): Promise<LoanWithBookAndProfile[]> {
-  const supabase = await createClient()
+export async function getAllLoans(params: LoanFilterParams = {}) {
   const { status, user_id, page = 1, limit = 20 } = params
   const offset = (page - 1) * limit
 
-  // Update overdue
-  await (supabase.rpc as any)('update_overdue_loans')
+  await updateOverdueLoans()
 
-  let q = supabase
-    .from('loans')
-    .select('*, books(*), profiles(*)')
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+  const where: any = {}
+  if (status) where.status = status
+  if (user_id) where.user_id = user_id
 
-  if (status) q = q.eq('status', status)
-  if (user_id) q = q.eq('user_id', user_id)
+  const loans = await prisma.loan.findMany({
+    where,
+    include: { book: true, profile: true },
+    orderBy: { created_at: 'desc' },
+    skip: offset,
+    take: limit,
+  })
 
-  const { data, error } = await q
-  if (error) return []
-  return (data as LoanWithBookAndProfile[]) ?? []
+  return loans
 }
 
 // ── Get Loan Stats ───────────────────────────────────────────
 export async function getLoanStats() {
-  const supabase = await createClient()
-  await (supabase.rpc as any)('update_overdue_loans')
+  await updateOverdueLoans()
 
   const [dipinjam, terlambat, dikembalikan] = await Promise.all([
-    supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'dipinjam'),
-    supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'terlambat'),
-    supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'dikembalikan'),
+    prisma.loan.count({ where: { status: 'dipinjam' } }),
+    prisma.loan.count({ where: { status: 'terlambat' } }),
+    prisma.loan.count({ where: { status: 'dikembalikan' } }),
   ])
 
   return {
-    dipinjam: dipinjam.count ?? 0,
-    terlambat: terlambat.count ?? 0,
-    dikembalikan: dikembalikan.count ?? 0,
+    dipinjam,
+    terlambat,
+    dikembalikan,
   }
 }

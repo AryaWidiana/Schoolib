@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Bell, User, ChevronDown, Menu } from 'lucide-react'
+import { Search, Bell, User, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
 import { getInitials } from '@/lib/utils'

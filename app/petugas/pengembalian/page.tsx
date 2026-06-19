@@ -33,12 +33,12 @@ export default async function PengembalianPage() {
               {activeLoans.map(l => (
                 <tr key={l.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
                   <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontWeight: 600, color: '#1E293B' }}>{l.profiles?.full_name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{l.profiles?.nim || '-'}</div>
+                    <div style={{ fontWeight: 600, color: '#1E293B' }}>{l.profile?.full_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{l.profile?.nim || '-'}</div>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontWeight: 600, color: '#1E293B' }}>{l.books?.judul?.substring(0, 30)}{l.books?.judul?.length > 30 ? '...' : ''}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{l.books?.isbn}</div>
+                    <div style={{ fontWeight: 600, color: '#1E293B' }}>{l.book?.judul?.substring(0, 30)}{l.book?.judul?.length > 30 ? '...' : ''}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{l.book?.isbn}</div>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ marginBottom: 4 }}><StatusBadge status={l.status} /></div>

@@ -15,9 +15,10 @@ export function formatRupiah(amount: number): string {
 }
 
 /** Format date to Indonesian locale */
-export function formatDate(dateStr: string | null | undefined): string {
+export function formatDate(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('id-ID', {
+  const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr
+  return d.toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -25,9 +26,10 @@ export function formatDate(dateStr: string | null | undefined): string {
 }
 
 /** Format date to short form */
-export function formatDateShort(dateStr: string | null | undefined): string {
+export function formatDateShort(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('id-ID', {
+  const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr
+  return d.toLocaleDateString('id-ID', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

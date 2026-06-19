@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { BookOpen, Users, BarChart2, Settings, LogOut, Home, BookMarked, ArrowLeftRight, AlertCircle, GraduationCap } from 'lucide-react'
+import { BookOpen, Users, BarChart2, LogOut, Home, BookMarked, ArrowLeftRight, AlertCircle, GraduationCap } from 'lucide-react'
 import { logout } from '@/actions/auth'
 
 const navItems = [

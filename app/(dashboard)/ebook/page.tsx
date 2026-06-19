@@ -1,17 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { BookGrid } from '@/components/books/book-grid'
 import { Tablet, ExternalLink } from 'lucide-react'
 
 export default async function EbookPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
 
-  const [{ data: ebooks }, { data: favorites }] = await Promise.all([
-    supabase.from('books').select('*').eq('is_ebook', true).order('judul'),
-    user ? supabase.from('favorites').select('book_id').eq('user_id', user.id) : { data: [] },
+  const [ebooks, favorites] = await Promise.all([
+    prisma.book.findMany({ where: { is_ebook: true }, orderBy: { judul: 'asc' } }),
+    user ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } }) : [],
   ])
 
-  const favIds = (favorites ?? []).map((f: { book_id: string }) => f.book_id)
+  const favIds = favorites.map(f => f.book_id)
 
   return (
     <div>

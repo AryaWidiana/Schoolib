@@ -1,23 +1,21 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { BookGrid } from '@/components/books/book-grid'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Heart } from 'lucide-react'
 import { redirect } from 'next/navigation'
-import type { FavoriteWithBook } from '@/types'
 
 export default async function FavoritPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) redirect('/login')
 
-  const { data: favs } = await supabase
-    .from('favorites')
-    .select('*, books(*)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+  const favorites = await prisma.favorite.findMany({
+    where: { user_id: user.id },
+    include: { book: true },
+    orderBy: { created_at: 'desc' }
+  })
 
-  const favorites = (favs as FavoriteWithBook[]) ?? []
-  const books = favorites.map(f => f.books)
+  const books = favorites.map(f => f.book)
   const favIds = favorites.map(f => f.book_id)
 
   return (

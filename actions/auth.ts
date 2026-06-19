@@ -2,13 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { loginSchema, registerSchema } from '@/lib/validations/auth'
 import type { ActionResult } from '@/types'
+import { prisma } from '@/lib/prisma'
+import { createSession, deleteSession, getUser } from '@/lib/auth'
+import bcrypt from 'bcryptjs'
 
 export async function login(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient()
-
   const raw = {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
@@ -19,25 +19,30 @@ export async function login(formData: FormData): Promise<ActionResult> {
     return { success: false, message: parsed.error.issues[0].message }
   }
 
-  const { error } = await supabase.auth.signInWithPassword(parsed.data)
+  const { email, password } = parsed.data
 
-  if (error) {
+  const user = await prisma.profile.findUnique({
+    where: { email },
+  })
+
+  if (!user) {
     return { success: false, message: 'Email atau password salah.' }
   }
 
-  // Get profile role to redirect correctly
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, message: 'Gagal mendapatkan sesi.' }
+  const isValidPassword = await bcrypt.compare(password, user.password_hash)
+  if (!isValidPassword) {
+    return { success: false, message: 'Email atau password salah.' }
+  }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single() as { data: { role: string } | null }
+  if (user.status === 'diblokir') {
+    return { success: false, message: 'Akun Anda sedang diblokir. Hubungi petugas.' }
+  }
+
+  await createSession(user.id, user.role)
 
   revalidatePath('/', 'layout')
 
-  if (profile?.role === 'petugas') {
+  if (user.role === 'petugas') {
     redirect('/petugas/dashboard')
   } else {
     redirect('/')
@@ -45,8 +50,6 @@ export async function login(formData: FormData): Promise<ActionResult> {
 }
 
 export async function register(formData: FormData): Promise<ActionResult> {
-  const supabase = await createClient()
-
   const raw = {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
@@ -62,43 +65,44 @@ export async function register(formData: FormData): Promise<ActionResult> {
 
   const { email, password, full_name, nim, phone } = parsed.data
 
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { full_name, role: 'anggota', nim, phone },
-    },
+  const existingUser = await prisma.profile.findUnique({
+    where: { email },
   })
 
-  if (error) {
-    if (error.message.includes('already registered')) {
-      return { success: false, message: 'Email sudah terdaftar.' }
-    }
-    return { success: false, message: error.message }
+  if (existingUser) {
+    return { success: false, message: 'Email sudah terdaftar.' }
   }
 
-  return {
-    success: true,
-    message: 'Registrasi berhasil! Silakan cek email Anda untuk konfirmasi.',
+  const password_hash = await bcrypt.hash(password, 10)
+
+  try {
+    const user = await prisma.profile.create({
+      data: {
+        email,
+        password_hash,
+        full_name,
+        nim,
+        phone,
+        role: 'anggota',
+        status: 'aktif',
+      },
+    })
+
+    // Auto login after register
+    await createSession(user.id, user.role)
+  } catch (error: any) {
+    return { success: false, message: error.message || 'Gagal mendaftar' }
   }
+
+  redirect('/') // Redirect to dashboard directly after register
 }
 
 export async function logout() {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
+  await deleteSession()
   redirect('/login')
 }
 
 export async function getProfile() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  return data
+  const user = await getUser()
+  return user
 }

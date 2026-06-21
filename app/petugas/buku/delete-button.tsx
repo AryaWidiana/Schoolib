@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Trash2, Loader2 } from 'lucide-react'
 // import { deleteBook } from '@/actions/books'
 
-export function DeleteBookButton({ id: _id }: { id: string }) {
+export function DeleteBookButton(_props: { id: string }) {
   const [pending, startTransition] = useTransition()
 
   const handleDelete = () => {

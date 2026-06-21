@@ -1,12 +1,10 @@
 'use client'
 
-import { useState, useOptimistic, useTransition } from 'react'
-import { toast } from 'sonner'
 import { Heart, BookOpen } from 'lucide-react'
 import Link from 'next/link'
 import type { Book } from '@/types'
 import { getCoverGradient, getBookAvailability, truncate } from '@/lib/utils'
-import { toggleFavorite } from '@/actions/books'
+import { useFavorite } from '@/hooks/use-favorite'
 
 interface BookCardProps {
   book: Book
@@ -15,39 +13,12 @@ interface BookCardProps {
 }
 
 export function BookCard({ book, isFavorited = false, showActions = true }: BookCardProps) {
-  const [favorited, setFavorited] = useState(isFavorited)
-  const [optimisticFavorited, setOptimisticFavorited] = useOptimistic(favorited)
-  const [, startTransition] = useTransition()
+  const { isFavorited: favoritedNow, toggleFavorite } = useFavorite(book.id, isFavorited)
   const gradient = getCoverGradient(book.judul)
   const availability = getBookAvailability(book.stok_tersedia)
 
-  const handleFavorite = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    // Immediately flip the icon synchronously inside transition
-    startTransition(() => {
-      setOptimisticFavorited(!optimisticFavorited)
-    })
-
-    // Fire server request entirely in the background, OUTSIDE of startTransition.
-    // This prevents Next.js from locking the App Router navigation!
-    toggleFavorite(book.id)
-      .then((result) => {
-        if (result.success) {
-          setFavorited(!favorited)
-          toast.success(result.message, { duration: 1500 })
-        } else {
-          toast.error(result.message)
-        }
-      })
-      .catch(() => {
-        toast.error('Gagal menyimpan favorit. Coba lagi.')
-      })
-  }
-
   return (
-    <Link href={`/buku/${book.id}`} style={{ textDecoration: 'none' }}>
+    <Link href={`/buku/${book.id}`} prefetch={true} style={{ textDecoration: 'none' }}>
       <div style={{
         cursor: 'pointer', borderRadius: 14, overflow: 'hidden',
         background: 'white', border: '1px solid #E2E8F0',
@@ -97,7 +68,7 @@ export function BookCard({ book, isFavorited = false, showActions = true }: Book
           {/* Favorite button */}
           {showActions && (
             <button
-              onClick={handleFavorite}
+              onClick={toggleFavorite}
               style={{
                 position: 'absolute', top: 8, right: 8,
                 width: 28, height: 28, borderRadius: '50%',
@@ -106,7 +77,7 @@ export function BookCard({ book, isFavorited = false, showActions = true }: Book
                 transition: 'all 0.2s',
               }}
             >
-              <Heart size={14} fill={optimisticFavorited ? '#EF4444' : 'none'} color={optimisticFavorited ? '#EF4444' : '#64748B'} />
+              <Heart size={14} fill={favoritedNow ? '#EF4444' : 'none'} color={favoritedNow ? '#EF4444' : '#64748B'} />
             </button>
           )}
         </div>

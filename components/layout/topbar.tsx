@@ -143,7 +143,7 @@ export function Topbar({ profile }: TopbarProps) {
             boxShadow: '0 8px 32px rgba(0,0,0,0.12)', minWidth: 180, zIndex: 100,
             padding: 8,
           }}>
-            <Link href="/profil" prefetch onClick={() => setShowProfile(false)} style={{
+            <Link href="/profil" prefetch={true} onClick={() => setShowProfile(false)} style={{
               display: 'block', padding: '9px 12px', borderRadius: 8,
               textDecoration: 'none', fontSize: '0.875rem', color: '#1E293B',
               fontWeight: 500,
@@ -151,7 +151,7 @@ export function Topbar({ profile }: TopbarProps) {
               onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >👤 Profil Saya</Link>
-            <Link href="/riwayat" prefetch onClick={() => setShowProfile(false)} style={{
+            <Link href="/riwayat" prefetch={true} onClick={() => setShowProfile(false)} style={{
               display: 'block', padding: '9px 12px', borderRadius: 8,
               textDecoration: 'none', fontSize: '0.875rem', color: '#1E293B', fontWeight: 500,
             }}

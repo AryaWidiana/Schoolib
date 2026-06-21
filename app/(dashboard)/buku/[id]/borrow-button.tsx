@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useTransition, useOptimistic } from 'react'
+import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Heart, Loader2 } from 'lucide-react'
 import { createLoan } from '@/actions/loans'
-import { toggleFavorite } from '@/actions/books'
 import type { Book, Profile } from '@/types'
+import { useFavorite } from '@/hooks/use-favorite'
 
 interface BorrowButtonProps {
   book: Book
@@ -16,8 +16,7 @@ interface BorrowButtonProps {
 }
 
 export function BorrowButton({ book, profile, alreadyBorrowed, isFavorited }: BorrowButtonProps) {
-  const [favorited, setFavorited] = useState(isFavorited)
-  const [optimisticFavorited, setOptimisticFavorited] = useOptimistic(favorited)
+  const { isFavorited: favoritedNow, toggleFavorite } = useFavorite(book.id, isFavorited)
   const [pending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -35,27 +34,9 @@ export function BorrowButton({ book, profile, alreadyBorrowed, isFavorited }: Bo
     })
   }
 
-  const handleFavorite = () => {
+  const handleFavoriteClick = () => {
     if (!profile) return router.push('/login')
-    
-    // Separate transition for optimistic update (synchronous)
-    startTransition(() => {
-      setOptimisticFavorited(!optimisticFavorited)
-    })
-      
-    // Fire server request entirely in the background, OUTSIDE of startTransition.
-    toggleFavorite(book.id)
-      .then((result) => {
-        if (result.success) {
-          setFavorited(!favorited)
-          toast.success(result.message, { duration: 1500 })
-        } else {
-          toast.error(result.message)
-        }
-      })
-      .catch(() => {
-        toast.error('Gagal menyimpan favorit. Coba lagi.')
-      })
+    toggleFavorite()
   }
 
   // Business rules checks for UI display
@@ -87,16 +68,16 @@ export function BorrowButton({ book, profile, alreadyBorrowed, isFavorited }: Bo
       </div>
 
       <button
-        onClick={handleFavorite}
+        onClick={handleFavoriteClick}
         style={{
           width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-          background: optimisticFavorited ? '#FEE2E2' : '#F1F5F9',
-          border: '1px solid', borderColor: optimisticFavorited ? '#FECACA' : '#E2E8F0',
+          background: favoritedNow ? '#FEE2E2' : '#F1F5F9',
+          border: '1px solid', borderColor: favoritedNow ? '#FECACA' : '#E2E8F0',
           display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
           transition: 'all 0.2s',
         }}
       >
-        <Heart size={20} fill={optimisticFavorited ? '#EF4444' : 'none'} color={optimisticFavorited ? '#EF4444' : '#64748B'} />
+        <Heart size={20} fill={favoritedNow ? '#EF4444' : 'none'} color={favoritedNow ? '#EF4444' : '#64748B'} />
       </button>
     </div>
   )

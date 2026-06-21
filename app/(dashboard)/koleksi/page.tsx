@@ -1,13 +1,39 @@
 import { getUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { unstable_cache } from 'next/cache'
-import { SearchableBookGrid } from '@/components/books/searchable-book-grid'
+import dynamic from 'next/dynamic'
+
+// Poin 5: Implementasi Code Splitting & Lazy Loading untuk komponen berat (Banyak Gambar)
+const SearchableBookGrid = dynamic(
+  () => import('@/components/books/searchable-book-grid').then(mod => mod.SearchableBookGrid),
+  { 
+    loading: () => (
+      <div style={{ padding: '40px 0', textAlign: 'center', color: '#94A3B8' }}>
+        Memuat koleksi buku perpustakaan...
+      </div>
+    )
+  }
+)
 
 const getCachedKoleksiBooks = unstable_cache(
-  async () => prisma.book.findMany({
-    where: { is_ebook: false },
-    orderBy: { judul: 'asc' }
-  }),
+  async () => {
+    const books = await prisma.book.findMany({
+      where: { is_ebook: false },
+      orderBy: { judul: 'asc' },
+      select: {
+        id: true,
+        judul: true,
+        pengarang: true,
+        isbn: true,
+        kategori: true,
+        cover_url: true,
+        stok_tersedia: true,
+        jumlah_eksemplar: true,
+        is_ebook: true,
+      }
+    })
+    return books as unknown as import('@/types').Book[]
+  },
   ['koleksi-books'],
   { revalidate: 60, tags: ['books'] }
 )

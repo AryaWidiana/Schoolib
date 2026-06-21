@@ -1,6 +1,6 @@
 import { getUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { BookGrid } from '@/components/books/book-grid'
+import { SearchableBookGrid } from '@/components/books/searchable-book-grid'
 import { Tablet, ExternalLink } from 'lucide-react'
 
 import { unstable_cache } from 'next/cache'
@@ -27,15 +27,38 @@ const getCachedEbooks = unstable_cache(
   { revalidate: 3600, tags: ['books'] } // Cache for 1 hour
 )
 
-export default async function EbookPage() {
+interface EbookProps {
+  searchParams: Promise<{ q?: string }>
+}
+
+import type { Book } from '@/types'
+
+export default async function EbookPage({ searchParams }: EbookProps) {
+  // 1. Await searchParams properly (Next.js 15 Requirement)
+  const { q } = await searchParams
   const user = await getUser()
 
-  const [ebooks, favorites] = await Promise.all([
-    getCachedEbooks(),
-    user ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } }) : [],
-  ])
+  let safeEbooks: Book[] = []
+  let safeFavorites: { book_id: string }[] = []
 
-  const favIds = favorites.map(f => f.book_id)
+  // 4. Try-Catch untuk mencegah fatal crash jika database gagal
+  try {
+    const [ebooks, favorites] = await Promise.all([
+      getCachedEbooks(),
+      user ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } }) : Promise.resolve([]),
+    ])
+    
+    // 2. Proteksi array dari nilai null/undefined
+    safeEbooks = ebooks || []
+    safeFavorites = favorites || []
+  } catch {
+    // Di tahap produksi, ini bisa di-log ke layanan seperti Sentry
+    safeEbooks = []
+    safeFavorites = []
+  }
+
+  // 3. Optional Chaining pada proses mapping relasi
+  const favIds = safeFavorites.map(f => f?.book_id).filter(Boolean)
 
   return (
     <div>
@@ -62,7 +85,12 @@ export default async function EbookPage() {
         </div>
       </div>
 
-      <BookGrid books={ebooks ?? []} favoritedIds={favIds} emptyType="books" />
+      <SearchableBookGrid 
+        books={safeEbooks} 
+        favoritedIds={favIds} 
+        initialQuery={q ?? ''}
+        placeholder="Cari e-book..." 
+      />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { getUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { BookOpen, ArrowLeft, Calendar, Tag, Hash, Building, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { BorrowButton } from './borrow-button'
@@ -39,7 +39,7 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
     book = fetchedBook
     activeLoan = fetchedLoan
     favorite = fetchedFavorite
-  } catch (error) {
+  } catch {
     // Tangkap error Prisma (misal: format UUID tidak valid)
     // dan biarkan jatuh ke pengecekan notFound() di bawah
     book = null

@@ -1,7 +1,7 @@
 import { getUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { unstable_cache } from 'next/cache'
-import dynamic from 'next/dynamic'
+
 import { CategoryFilterGrid } from '@/components/books/category-filter-grid'
 
 

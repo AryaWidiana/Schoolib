@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Search, Bell, User, ChevronDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Bell, User, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
 import { getInitials } from '@/lib/utils'
@@ -12,23 +12,9 @@ interface TopbarProps {
   profile: Profile | null
 }
 
-// Halaman yang mendukung pencarian di tempat (tidak redirect)
-// Termasuk '/' (Beranda) agar search tidak memaksa pindah ke /koleksi
-const SEARCH_IN_PAGE = ['/', '/koleksi', '/ebook', '/populer', '/favorit']
-
 export function Topbar({ profile }: TopbarProps) {
   const [showProfile, setShowProfile] = useState(false)
   const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const currentQ = searchParams.get('q') ?? ''
-  const [query, setQuery] = useState(currentQ)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  // Sync input with URL query when navigating
-  useEffect(() => {
-    setQuery(currentQ)
-  }, [currentQ])
 
   // Prefetch main routes on mount for instant navigation
   useEffect(() => {
@@ -36,71 +22,19 @@ export function Topbar({ profile }: TopbarProps) {
     routes.forEach(route => router.prefetch(route))
   }, [router])
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    const q = query.trim()
-
-    // Jika query kosong, tidak perlu navigasi apapun
-    if (!q) return
-
-    // Jika halaman saat ini mendukung pencarian di tempat, tetap di sini
-    // Jika tidak (misal: halaman Profil, Riwayat), baru arahkan ke Koleksi
-    const target = SEARCH_IN_PAGE.includes(pathname) ? pathname : '/koleksi'
-    router.push(`${target}?q=${encodeURIComponent(q)}`)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      setQuery('')
-      inputRef.current?.blur()
-    }
-  }
-
   return (
     <header className="dashboard-topbar" style={{
       background: 'white',
       borderBottom: '1px solid #E2E8F0',
       display: 'flex',
       alignItems: 'center',
+      justifyContent: 'flex-end',
       padding: '0 24px',
       gap: 16,
       position: 'sticky',
       top: 0,
       zIndex: 50,
     }}>
-      {/* Search — navigates to page, actual filtering is client-side */}
-      {pathname !== '/profil' && (
-        <form onSubmit={handleSearch} style={{ flex: 1, maxWidth: 480 }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Cari judul, pengarang, atau ISBN..."
-              style={{
-                width: '100%',
-                padding: '10px 14px 10px 40px',
-                border: '1.5px solid #E2E8F0',
-                borderRadius: 12,
-                fontSize: '0.875rem',
-                fontFamily: 'inherit',
-                background: '#F8FAFC',
-                color: '#1E293B',
-                outline: 'none',
-                transition: 'all 0.2s',
-              }}
-              onFocus={(e) => { e.target.style.borderColor = '#1D2A8A'; e.target.style.background = 'white'; e.target.style.boxShadow = '0 0 0 3px rgba(29,42,138,0.08)' }}
-              onBlur={(e) => { e.target.style.borderColor = '#E2E8F0'; e.target.style.background = '#F8FAFC'; e.target.style.boxShadow = 'none' }}
-            />
-          </div>
-        </form>
-      )}
-
-      <div style={{ flex: 1 }} />
-
       {/* Notification bell */}
       <Link href="/profil" prefetch style={{
         position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',

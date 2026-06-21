@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Search, Users } from 'lucide-react'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import { BlockButton } from './block-button'
@@ -14,16 +14,23 @@ interface AnggotaClientProps {
 
 export function AnggotaClient({ members }: AnggotaClientProps) {
   const [query, setQuery] = useState('')
+  // Debounce 400ms: filter hanya berjalan jika user berhenti mengetik
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 400)
+    return () => clearTimeout(timer)
+  }, [query])
 
   const filtered = useMemo(() => {
-    const q = query.toLowerCase().trim()
+    const q = debouncedQuery.toLowerCase().trim()
     if (!q) return members
     return members.filter(m =>
       m.full_name?.toLowerCase().includes(q) ||
       m.nim?.toLowerCase().includes(q) ||
       m.phone?.toLowerCase().includes(q)
     )
-  }, [query, members])
+  }, [debouncedQuery, members])
 
   return (
     <div>
@@ -101,10 +108,10 @@ export function AnggotaClient({ members }: AnggotaClientProps) {
                 <tr key={m.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ fontWeight: 600, color: '#1E293B' }}>
-                      <Highlight text={m.full_name ?? ''} query={query} />
+                      <Highlight text={m.full_name ?? ''} query={debouncedQuery} />
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                      <Highlight text={m.nim || m.phone || '-'} query={query} />
+                      <Highlight text={m.nim || m.phone || '-'} query={debouncedQuery} />
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px', color: '#475569' }}>{formatDate(m.created_at)}</td>

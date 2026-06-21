@@ -83,6 +83,7 @@ export async function getAllMembers() {
   const members = await prisma.profile.findMany({
     where: { role: 'anggota' },
     orderBy: { full_name: 'asc' },
+    take: 200, // Batas untuk mencegah fetch seluruh tabel
     select: {
       id: true,
       full_name: true,

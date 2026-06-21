@@ -5,7 +5,7 @@ import { DeleteBookButton } from './delete-button'
 
 export default async function KelolaBukuPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams
-  const books = await getBooks({ query: q, limit: 100 })
+  const books = await getBooks({ query: q, limit: 20 })
 
   return (
     <div>

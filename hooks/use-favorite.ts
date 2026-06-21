@@ -2,70 +2,83 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
-import { toggleFavorite as toggleFavoriteAction } from '@/actions/books'
 
 /**
- * Hook favorit dengan pendekatan MURNI NON-BLOCKING.
+ * Hook favorit dengan pendekatan MURNI NON-BLOCKING — versi akhir.
  *
- * Perbedaan dari versi sebelumnya:
- * - TIDAK menggunakan useOptimistic (membutuhkan useTransition yang bisa mengunci router)
- * - TIDAK menggunakan useTransition (bisa blocking terhadap navigasi Next.js App Router)
- * - State dibalik INSTAN via useState biasa di baris pertama handler
- * - Mutasi database berjalan sepenuhnya di background (true fire-and-forget)
- * - Jika mutasi gagal, state otomatis di-rollback ke nilai sebelumnya
+ * Perbaikan dari versi sebelumnya (yang masih lag):
+ * - TIDAK lagi memanggil Server Action `toggleFavoriteAction`.
+ *   Server Actions tetap memicu serialization overhead Next.js dan
+ *   memanggil getUser() yang melakukan 2 round-trip berurutan:
+ *   (1) decrypt JWT → (2) prisma.profile.findUnique() — sebelum
+ *   menyentuh tabel favorites sama sekali.
+ *
+ * - Sekarang memanggil POST /api/favorites (API Route biasa) via fetch().
+ *   - fetch() adalah pure fire-and-forget dari browser: request terkirim,
+ *     browser langsung lanjut tanpa memblokir render loop.
+ *   - API Route hanya melakukan decrypt JWT in-memory (CPU, tanpa DB),
+ *     lalu satu query Prisma ke tabel favorites. Total: 1 DB call.
+ *   - Zero revalidatePath, zero router.refresh, zero global state update.
  */
 export function useFavorite(bookId: string, initialFavoritedStatus: boolean) {
-  // 1. STATE LOKAL BINER: Satu-satunya sumber kebenaran untuk UI ikon.
-  // Tidak ada koneksi ke state global, tidak ada router.refresh().
+  // 1. STATE LOKAL — satu-satunya sumber kebenaran untuk tampilan ikon.
+  //    Tidak terhubung ke global state, context, atau cache apapun.
   const [isLiked, setIsLiked] = useState(initialFavoritedStatus)
 
-  // Ref untuk melacak nilai terbaru tanpa menyebabkan re-render atau
-  // membuat ulang handler (menghindari stale closure di useCallback)
+  // Ref untuk membaca nilai terkini tanpa perlu isLiked masuk ke dependency array.
+  // Ini mencegah stale closure dan menghindari pembuatan ulang handler.
   const isLikedRef = useRef(isLiked)
   isLikedRef.current = isLiked
 
-  // Ref untuk mencegah double-click (debounce sederhana via flag)
+  // Flag debounce sederhana — mencegah double-click menyebabkan race condition.
   const isMutatingRef = useRef(false)
 
-  // 2. HANDLER NON-BLOCKING dengan useCallback agar referensi stabil
+  // 2. HANDLER — referensi stabil via useCallback, hanya bergantung pada bookId.
   const toggleFavorite = useCallback((e?: React.MouseEvent) => {
+    // Hentikan event bubbling agar tidak memicu <Link> di BookCard
     if (e) {
       e.preventDefault()
       e.stopPropagation()
     }
 
-    // Cegah double-click cepat yang bisa menyebabkan state race condition
+    // Tolak double-click selama mutasi sebelumnya belum selesai
     if (isMutatingRef.current) return
     isMutatingRef.current = true
 
-    // 3. BALIK STATE INSTAN — tidak menunggu apapun dari server
+    // 3. BALIK STATE INSTAN — baris pertama, tidak menunggu apapun.
+    //    Ini yang memberikan 0ms visual latency pada ikon hati.
     const prevValue = isLikedRef.current
-    const nextValue = !prevValue
-    setIsLiked(nextValue)
+    setIsLiked(!prevValue)
 
-    // 4. FIRE-AND-FORGET: Jalankan mutasi database tanpa memblokir apapun.
-    // Tidak ada 'await', tidak ada startTransition, tidak ada router.refresh().
-    // Promise ini berjalan sepenuhnya di background event loop.
-    toggleFavoriteAction(bookId)
-      .then((result) => {
-        if (result.success) {
-          toast.success(result.message, { duration: 1500 })
-        } else {
-          // Rollback UI jika server menolak (misal: sesi expired)
+    // 4. FIRE-AND-FORGET via fetch() ke API Route.
+    //    fetch() tidak diawait — browser mengirim request di background
+    //    dan langsung melanjutkan rendering tanpa hambatan.
+    fetch('/api/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // Kirim body minimal — hanya bookId yang diperlukan server
+      body: JSON.stringify({ bookId }),
+    })
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok || !data.success) {
+          // Rollback UI jika server menolak (sesi expired, dll)
           setIsLiked(prevValue)
-          toast.error(result.message)
+          toast.error(data.message ?? 'Gagal menyimpan favorit.')
+        } else {
+          toast.success(data.message, { duration: 1500 })
         }
       })
       .catch(() => {
-        // Rollback UI jika koneksi gagal
+        // Rollback UI jika koneksi terputus
         setIsLiked(prevValue)
         toast.error('Gagal menyimpan. Cek koneksi internet Anda.')
       })
       .finally(() => {
-        // Buka kunci setelah mutasi selesai agar klik berikutnya bisa diterima
+        // Buka kunci agar klik berikutnya bisa diterima
         isMutatingRef.current = false
       })
-  }, [bookId]) // bookId saja — tidak bergantung pada isLiked (pakai ref)
+  }, [bookId]) // bookId saja — isLiked dibaca via ref (bukan closure)
 
   return {
     isFavorited: isLiked,

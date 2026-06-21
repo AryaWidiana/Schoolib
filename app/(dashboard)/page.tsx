@@ -1,6 +1,7 @@
 import { getUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { BookGrid } from '@/components/books/book-grid'
+import { SearchableBookGrid } from '@/components/books/searchable-book-grid'
 import { BookOpen, TrendingUp, Sparkles, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 
@@ -19,9 +20,14 @@ const getCachedBerandaBooks = unstable_cache(
   { revalidate: 60, tags: ['books'] }
 )
 
-export default async function BerandaPage() {
+interface BerandaProps {
+  searchParams: Promise<{ q?: string }>
+}
+
+export default async function BerandaPage({ searchParams }: BerandaProps) {
+  const { q } = await searchParams
+
   // 1. Fetching Paralel: Ambil sesi pengguna DAN buku secara BERSAMAAN.
-  // Tidak ada lagi kueri buku yang menunggu pengecekan sesi selesai.
   const [user, cachedBooks] = await Promise.all([
     getUser(),
     getCachedBerandaBooks()
@@ -92,7 +98,13 @@ export default async function BerandaPage() {
             Lihat semua <ArrowRight size={14} />
           </Link>
         </div>
-        <BookGrid books={rekomendasi ?? []} favoritedIds={favIds} />
+        {/* SearchableBookGrid agar pencarian dari Topbar berfungsi di Beranda */}
+        <SearchableBookGrid
+          books={rekomendasi ?? []}
+          favoritedIds={favIds}
+          initialQuery={q ?? ''}
+          placeholder="Cari judul, pengarang, atau ISBN..."
+        />
       </section>
 
       {/* Populer */}

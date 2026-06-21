@@ -12,8 +12,9 @@ interface TopbarProps {
   profile: Profile | null
 }
 
-// Pages where search should stay in-place
-const SEARCH_IN_PAGE = ['/koleksi', '/ebook', '/populer', '/favorit']
+// Halaman yang mendukung pencarian di tempat (tidak redirect)
+// Termasuk '/' (Beranda) agar search tidak memaksa pindah ke /koleksi
+const SEARCH_IN_PAGE = ['/', '/koleksi', '/ebook', '/populer', '/favorit']
 
 export function Topbar({ profile }: TopbarProps) {
   const [showProfile, setShowProfile] = useState(false)
@@ -38,9 +39,14 @@ export function Topbar({ profile }: TopbarProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     const q = query.trim()
-    // Navigate to the correct page — search itself happens client-side on that page
+
+    // Jika query kosong, tidak perlu navigasi apapun
+    if (!q) return
+
+    // Jika halaman saat ini mendukung pencarian di tempat, tetap di sini
+    // Jika tidak (misal: halaman Profil, Riwayat), baru arahkan ke Koleksi
     const target = SEARCH_IN_PAGE.includes(pathname) ? pathname : '/koleksi'
-    router.push(q ? `${target}?q=${encodeURIComponent(q)}` : target)
+    router.push(`${target}?q=${encodeURIComponent(q)}`)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

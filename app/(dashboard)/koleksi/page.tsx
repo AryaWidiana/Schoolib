@@ -2,6 +2,7 @@ import { getUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { unstable_cache } from 'next/cache'
 import dynamic from 'next/dynamic'
+import { CategoryFilterGrid } from '@/components/books/category-filter-grid'
 
 // Poin 5: Implementasi Code Splitting & Lazy Loading untuk komponen berat (Banyak Gambar)
 const SearchableBookGrid = dynamic(
@@ -15,12 +16,19 @@ const SearchableBookGrid = dynamic(
   }
 )
 
+// Batas maksimum buku yang diambil dari database sekaligus.
+// Ini mencegah transfer ratusan/ribuan buku ke client yang membuat DOM bloat.
+const KOLEKSI_LIMIT = 200
+
 const getCachedKoleksiBooks = unstable_cache(
   async () => {
     const books = await prisma.book.findMany({
       where: { is_ebook: false },
       orderBy: { judul: 'asc' },
+      take: KOLEKSI_LIMIT, // Poin 1: Batasi hasil query — tidak ambil seluruh tabel
       select: {
+        // Poin 2: Hanya kolom esensial untuk kartu buku
+        // Tidak ada: deskripsi, sinopsis, penerbit, tahun_terbit, ebook_url
         id: true,
         judul: true,
         pengarang: true,
@@ -88,10 +96,6 @@ async function KoleksiContent({ q, kategori }: { q?: string; kategori?: string }
     user ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } }) : [],
   ])
 
-  const filteredByCategory = kategori
-    ? books.filter(b => b.kategori === kategori)
-    : books
-
   const cats = [...new Set(categoryData.map(c => c.kategori as string))].sort()
   const favIds = (favorites as { book_id: string }[]).map(f => f.book_id)
 
@@ -100,33 +104,18 @@ async function KoleksiContent({ q, kategori }: { q?: string; kategori?: string }
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1E293B', marginBottom: 4 }}>Koleksi Buku</h1>
         <p style={{ color: '#94A3B8', fontSize: '0.875rem' }}>
-          {kategori ? `Kategori: ${kategori}` : 'Semua koleksi buku perpustakaan'}
-          {` — ${filteredByCategory.length} buku tersedia`}
+          Semua koleksi buku perpustakaan
+          {` — ${books.length} buku tersedia`}
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 24 }}>
-        <a href="/koleksi" style={{
-          padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600,
-          textDecoration: 'none',
-          background: !kategori ? '#1D2A8A' : '#F1F5F9',
-          color: !kategori ? 'white' : '#64748B',
-        }}>Semua</a>
-        {cats.map(cat => (
-          <a key={cat} href={`/koleksi?kategori=${encodeURIComponent(cat)}`} style={{
-            padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600,
-            textDecoration: 'none',
-            background: kategori === cat ? '#1D2A8A' : '#F1F5F9',
-            color: kategori === cat ? 'white' : '#64748B',
-          }}>{cat}</a>
-        ))}
-      </div>
-
-      <SearchableBookGrid
-        books={filteredByCategory}
+      {/* CategoryFilterGrid: filtering kategori murni client-side (tidak ada server round-trip) */}
+      <CategoryFilterGrid
+        books={books}
+        categories={cats}
         favoritedIds={favIds}
+        initialKategori={kategori ?? ''}
         initialQuery={q ?? ''}
-        placeholder="Cari judul, pengarang, atau ISBN..."
       />
     </>
   )

@@ -14,6 +14,10 @@ interface SearchableBookGridProps {
   showSearch?: boolean
 }
 
+// Poin 1: Batas maksimum hasil yang ditampilkan di DOM sekaligus.
+// Mencegah React me-render ratusan <BookCard> bersamaan yang menyebabkan visual lag.
+const SEARCH_DISPLAY_LIMIT = 20
+
 export function SearchableBookGrid({
   books,
   favoritedIds = [],
@@ -21,20 +25,36 @@ export function SearchableBookGrid({
   placeholder = 'Cari judul, pengarang, ISBN, atau kategori...',
   showSearch = true,
 }: SearchableBookGridProps) {
-  // Hanya simpan debouncedQuery di sini.
-  // Mengetik secara real-time TIDAK akan memicu state ini sebelum user diam 300ms.
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery)
 
-  // Client-side filtering — O(n) in memory, dieksekusi hanya saat debouncedQuery berubah
-  const filtered = useMemo(() => {
+  // useMemo menghitung dua hal sekaligus:
+  // 1. `display` — buku yang benar-benar di-render di DOM (maks 20)
+  // 2. `totalFound` — jumlah total yang cocok (untuk info teks pencarian)
+  const { display, totalFound } = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase()
-    if (!q) return books
-    return books.filter(book =>
-      book.judul?.toLowerCase().includes(q) ||
-      book.pengarang?.toLowerCase().includes(q) ||
-      book.isbn?.toLowerCase().includes(q) ||
-      book.kategori?.toLowerCase().includes(q)
-    )
+
+    if (!q) {
+      return { display: books.slice(0, SEARCH_DISPLAY_LIMIT), totalFound: books.length }
+    }
+
+    // Loop sekali — kumpulkan semua yang cocok, tapi hanya push ke display sampai batas
+    const display: Book[] = []
+    let totalFound = 0
+    for (const book of books) {
+      const match =
+        book.judul?.toLowerCase().includes(q) ||
+        book.pengarang?.toLowerCase().includes(q) ||
+        book.isbn?.toLowerCase().includes(q) ||
+        book.kategori?.toLowerCase().includes(q)
+
+      if (match) {
+        totalFound++
+        if (display.length < SEARCH_DISPLAY_LIMIT) {
+          display.push(book)
+        }
+      }
+    }
+    return { display, totalFound }
   }, [debouncedQuery, books])
 
   return (
@@ -45,20 +65,31 @@ export function SearchableBookGrid({
             initialValue={initialQuery}
             placeholder={placeholder}
             onSearch={setDebouncedQuery}
-            debounceTime={300} // Cukup responsif tapi aman dari re-render brutal
+            debounceTime={300}
           />
 
           {debouncedQuery.trim() && (
             <p style={{ marginTop: 8, fontSize: '0.8rem', color: '#64748B' }}>
-              Ditemukan <strong style={{ color: '#1E293B' }}>{filtered.length}</strong> buku
-              untuk &quot;<strong style={{ color: '#1D2A8A' }}>{debouncedQuery.trim()}</strong>&quot;
+              {totalFound > SEARCH_DISPLAY_LIMIT ? (
+                <>
+                  Menampilkan <strong style={{ color: '#1E293B' }}>{display.length}</strong> dari{' '}
+                  <strong style={{ color: '#1E293B' }}>{totalFound}</strong> buku untuk{' '}
+                  &quot;<strong style={{ color: '#1D2A8A' }}>{debouncedQuery.trim()}</strong>&quot;
+                  {' '}— <span style={{ color: '#94A3B8' }}>persempit kata kunci untuk hasil lebih tepat</span>
+                </>
+              ) : (
+                <>
+                  Ditemukan <strong style={{ color: '#1E293B' }}>{totalFound}</strong> buku untuk{' '}
+                  &quot;<strong style={{ color: '#1D2A8A' }}>{debouncedQuery.trim()}</strong>&quot;
+                </>
+              )}
             </p>
           )}
         </div>
       )}
 
       <BookGrid
-        books={filtered}
+        books={display}
         favoritedIds={favoritedIds}
         emptyType={debouncedQuery.trim() ? 'search' : 'books'}
       />

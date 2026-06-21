@@ -16,7 +16,10 @@ interface BorrowButtonProps {
 }
 
 export function BorrowButton({ book, profile, alreadyBorrowed, isFavorited }: BorrowButtonProps) {
+  // Favorit: murni non-blocking via useFavorite hook (tidak ada useTransition di sini)
   const { isFavorited: favoritedNow, toggleFavorite } = useFavorite(book.id, isFavorited)
+
+  // Pinjam: memang butuh useTransition karena menunggu respons server (aksi blocking yang disengaja)
   const [pending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -34,9 +37,10 @@ export function BorrowButton({ book, profile, alreadyBorrowed, isFavorited }: Bo
     })
   }
 
+  // Favorit handler: cek auth lalu jalankan (tidak ada startTransition, tidak ada await)
   const handleFavoriteClick = () => {
     if (!profile) return router.push('/login')
-    toggleFavorite()
+    toggleFavorite() // Fire-and-forget — tidak memblokir navigasi
   }
 
   // Business rules checks for UI display

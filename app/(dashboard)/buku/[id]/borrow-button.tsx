@@ -38,22 +38,24 @@ export function BorrowButton({ book, profile, alreadyBorrowed, isFavorited }: Bo
   const handleFavorite = () => {
     if (!profile) return router.push('/login')
     
-    // Separate transition for optimistic update (no blocking UI)
-    startTransition(async () => {
+    // Separate transition for optimistic update (synchronous)
+    startTransition(() => {
       setOptimisticFavorited(!optimisticFavorited)
+    })
       
-      try {
-        const result = await toggleFavorite(book.id)
+    // Fire server request entirely in the background, OUTSIDE of startTransition.
+    toggleFavorite(book.id)
+      .then((result) => {
         if (result.success) {
           setFavorited(!favorited)
           toast.success(result.message, { duration: 1500 })
         } else {
           toast.error(result.message)
         }
-      } catch {
+      })
+      .catch(() => {
         toast.error('Gagal menyimpan favorit. Coba lagi.')
-      }
-    })
+      })
   }
 
   // Business rules checks for UI display

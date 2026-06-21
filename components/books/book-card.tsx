@@ -25,24 +25,25 @@ export function BookCard({ book, isFavorited = false, showActions = true }: Book
     e.preventDefault()
     e.stopPropagation()
 
-    // Immediately flip the icon — no waiting for server
-    startTransition(async () => {
+    // Immediately flip the icon synchronously inside transition
+    startTransition(() => {
       setOptimisticFavorited(!optimisticFavorited)
+    })
 
-      try {
-        const result = await toggleFavorite(book.id)
+    // Fire server request entirely in the background, OUTSIDE of startTransition.
+    // This prevents Next.js from locking the App Router navigation!
+    toggleFavorite(book.id)
+      .then((result) => {
         if (result.success) {
           setFavorited(!favorited)
           toast.success(result.message, { duration: 1500 })
         } else {
-          // Rollback: server rejected, revert icon
           toast.error(result.message)
         }
-      } catch {
-        // Rollback on network error
+      })
+      .catch(() => {
         toast.error('Gagal menyimpan favorit. Coba lagi.')
-      }
-    })
+      })
   }
 
   return (

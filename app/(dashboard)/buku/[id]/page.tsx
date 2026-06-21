@@ -1,9 +1,9 @@
 import { getUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
-import { BookOpen, ArrowLeft, Calendar, Tag, Hash, Building, ExternalLink } from 'lucide-react'
-import Link from 'next/link'
+import { BookOpen, Calendar, Tag, Hash, Building, ExternalLink } from 'lucide-react'
 import { BorrowButton } from './borrow-button'
+import { BackButton } from '@/components/ui/back-button'
 
 export default async function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // 1. Await params properly per Next.js 15 rules
@@ -56,9 +56,7 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div>
-      <Link href="/koleksi" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#64748B', textDecoration: 'none', fontSize: '0.85rem', marginBottom: 20, fontWeight: 500 }}>
-        <ArrowLeft size={16} /> Kembali ke Koleksi
-      </Link>
+      <BackButton label="Kembali" />
 
       <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 28, alignItems: 'start' }}>
         {/* Cover */}

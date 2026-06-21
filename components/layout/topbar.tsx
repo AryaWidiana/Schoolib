@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { Bell, User, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
@@ -14,13 +13,6 @@ interface TopbarProps {
 
 export function Topbar({ profile }: TopbarProps) {
   const [showProfile, setShowProfile] = useState(false)
-  const router = useRouter()
-
-  // Prefetch main routes on mount for instant navigation
-  useEffect(() => {
-    const routes = ['/', '/koleksi', '/populer', '/ebook', '/favorit', '/riwayat', '/profil']
-    routes.forEach(route => router.prefetch(route))
-  }, [router])
 
   return (
     <header className="dashboard-topbar" style={{

@@ -14,9 +14,9 @@ export async function getBooks(params: BookSearchParams = {}) {
   
   if (query) {
     where.OR = [
-      { judul: { contains: query } },
-      { pengarang: { contains: query } },
-      { isbn: { contains: query } },
+      { judul: { contains: query, mode: 'insensitive' } },
+      { pengarang: { contains: query, mode: 'insensitive' } },
+      { isbn: { contains: query, mode: 'insensitive' } },
     ]
   }
 

@@ -1,13 +1,57 @@
-import { getAllLoans } from '@/actions/loans'
-import { StatusBadge } from '@/components/shared/status-badge'
-import { formatDate } from '@/lib/utils'
+import { prisma } from '@/lib/prisma'
 import { BookMarked } from 'lucide-react'
+import { PeminjamanClient } from './peminjaman-client'
+import type { LoanWithBookAndProfile } from '@/types'
 
-export default async function PeminjamanPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
-  const { status } = await searchParams
-  // For 'peminjaman' page we only care about active/late loans, not history, unless specified
-  const loans = await getAllLoans({ status: status as 'dipinjam' | 'terlambat' | 'dikembalikan', limit: 100 })
-  const filtered = status ? loans : loans.filter(l => l.status !== 'dikembalikan')
+// 2. Query terbatas per kategori — tidak pernah ambil seluruh tabel sekaligus
+const AKTIF_LIMIT = 200   // Pinjaman aktif biasanya kecil jumlahnya
+const RIWAYAT_LIMIT = 50  // Riwayat bisa sangat besar, batasi 50 terbaru
+
+const loanSelect = {
+  id: true,
+  user_id: true,
+  book_id: true,
+  tanggal_pinjam: true,
+  tanggal_jatuh_tempo: true,
+  tanggal_kembali: true,
+  status: true,
+  hari_telat: true,
+  denda: true,
+  sudah_diperpanjang: true,
+  created_at: true,
+  book: { select: { id: true, judul: true, isbn: true } },
+  profile: { select: { id: true, full_name: true, nim: true } },
+} as const
+
+export default async function PeminjamanPage() {
+  // 2. Fetch paralel: aktif dan riwayat diambil BERSAMAAN, bukan berurutan
+  let aktifLoans: LoanWithBookAndProfile[] = []
+  let riwayatLoans: LoanWithBookAndProfile[] = []
+
+  try {
+    const [fetchedAktif, fetchedRiwayat] = await Promise.all([
+      // Tab "Aktif": semua pinjaman yang belum dikembalikan
+      prisma.loan.findMany({
+        where: { status: { in: ['dipinjam', 'terlambat'] } },
+        orderBy: { created_at: 'desc' },
+        take: AKTIF_LIMIT,
+        select: loanSelect,
+      }),
+      // Tab "Riwayat": hanya 50 terbaru untuk mencegah DOM bloat
+      prisma.loan.findMany({
+        where: { status: 'dikembalikan' },
+        orderBy: { tanggal_kembali: 'desc' },
+        take: RIWAYAT_LIMIT,
+        select: loanSelect,
+      }),
+    ])
+
+    aktifLoans = fetchedAktif as unknown as LoanWithBookAndProfile[]
+    riwayatLoans = fetchedRiwayat as unknown as LoanWithBookAndProfile[]
+  } catch {
+    aktifLoans = []
+    riwayatLoans = []
+  }
 
   return (
     <div>
@@ -17,52 +61,17 @@ export default async function PeminjamanPage({ searchParams }: { searchParams: P
             <BookMarked size={20} color="#1D2A8A" />
             <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1E293B' }}>Data Peminjaman</h1>
           </div>
-          <p style={{ color: '#94A3B8', fontSize: '0.875rem' }}>Daftar buku yang sedang dipinjam oleh anggota</p>
+          <p style={{ color: '#94A3B8', fontSize: '0.875rem' }}>
+            {aktifLoans.length} pinjaman aktif · {riwayatLoans.length} riwayat terbaru
+          </p>
         </div>
       </div>
 
-      <div className="schoolib-card" style={{ padding: 20 }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <a href="/petugas/peminjaman" style={{ padding: '6px 12px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', background: !status ? '#1D2A8A' : '#F1F5F9', color: !status ? 'white' : '#64748B' }}>Aktif & Terlambat</a>
-          <a href="/petugas/peminjaman?status=dipinjam" style={{ padding: '6px 12px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', background: status === 'dipinjam' ? '#1D2A8A' : '#F1F5F9', color: status === 'dipinjam' ? 'white' : '#64748B' }}>Dipinjam</a>
-          <a href="/petugas/peminjaman?status=terlambat" style={{ padding: '6px 12px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', background: status === 'terlambat' ? '#EF4444' : '#F1F5F9', color: status === 'terlambat' ? 'white' : '#64748B' }}>Terlambat</a>
-          <a href="/petugas/peminjaman?status=dikembalikan" style={{ padding: '6px 12px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', background: status === 'dikembalikan' ? '#16A34A' : '#F1F5F9', color: status === 'dikembalikan' ? 'white' : '#64748B' }}>Riwayat</a>
-        </div>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #E2E8F0', color: '#64748B' }}>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Anggota</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Buku</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Tanggal Pinjam</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Jatuh Tempo</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(l => (
-                <tr key={l.id} style={{ borderBottom: '1px solid #E2E8F0' }}>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontWeight: 600, color: '#1E293B' }}>{l.profile?.full_name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{l.profile?.nim || '-'}</div>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontWeight: 600, color: '#1E293B' }}>{l.book?.judul?.substring(0, 30)}{l.book?.judul?.length > 30 ? '...' : ''}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>{l.book?.isbn}</div>
-                  </td>
-                  <td style={{ padding: '12px 16px', color: '#475569' }}>{formatDate(l.tanggal_pinjam)}</td>
-                  <td style={{ padding: '12px 16px', color: '#475569' }}>{formatDate(l.tanggal_jatuh_tempo)}</td>
-                  <td style={{ padding: '12px 16px' }}><StatusBadge status={l.status} /></td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={5} style={{ padding: 32, textAlign: 'center', color: '#94A3B8' }}>Tidak ada data peminjaman</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* PeminjamanClient: semua tab switching terjadi di sisi klien (nol server round-trip) */}
+      <PeminjamanClient
+        aktifLoans={aktifLoans}
+        riwayatLoans={riwayatLoans}
+      />
     </div>
   )
 }

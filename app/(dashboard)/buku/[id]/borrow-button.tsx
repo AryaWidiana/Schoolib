@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useOptimistic } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Heart, Loader2 } from 'lucide-react'

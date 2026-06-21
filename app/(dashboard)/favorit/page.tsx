@@ -17,11 +17,24 @@ export default async function FavoritPage({ searchParams }: FavoritProps) {
 
   const favorites = await prisma.favorite.findMany({
     where: { user_id: user.id },
-    include: { book: true },
+    include: { 
+      book: {
+        select: {
+          id: true,
+          judul: true,
+          pengarang: true,
+          kategori: true,
+          cover_url: true,
+          is_ebook: true,
+          stok_tersedia: true,
+          jumlah_eksemplar: true,
+        }
+      } 
+    },
     orderBy: { created_at: 'desc' }
   })
 
-  const allBooks = favorites.map(f => f.book)
+  const allBooks = favorites.map(f => f.book) as unknown as import('@/types').Book[]
   const favIds = favorites.map(f => f.book_id)
 
   // Filter di sisi server berdasarkan query

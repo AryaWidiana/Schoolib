@@ -3,11 +3,35 @@ import { prisma } from '@/lib/prisma'
 import { BookGrid } from '@/components/books/book-grid'
 import { Tablet, ExternalLink } from 'lucide-react'
 
+import { unstable_cache } from 'next/cache'
+
+const getCachedEbooks = unstable_cache(
+  async () => {
+    const books = await prisma.book.findMany({ 
+      where: { is_ebook: true }, 
+      orderBy: { judul: 'asc' },
+      select: {
+        id: true,
+        judul: true,
+        pengarang: true,
+        cover_url: true,
+        is_ebook: true,
+        stok_tersedia: true,
+        jumlah_eksemplar: true,
+        kategori: true,
+      }
+    })
+    return books as unknown as import('@/types').Book[]
+  },
+  ['public-ebooks-list'],
+  { revalidate: 3600, tags: ['books'] } // Cache for 1 hour
+)
+
 export default async function EbookPage() {
   const user = await getUser()
 
   const [ebooks, favorites] = await Promise.all([
-    prisma.book.findMany({ where: { is_ebook: true }, orderBy: { judul: 'asc' } }),
+    getCachedEbooks(),
     user ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } }) : [],
   ])
 

@@ -23,8 +23,10 @@ export async function login(formData: FormData): Promise<ActionResult> {
 
   let user;
   try {
+    // Only fetch the columns needed for authentication — not the entire profile
     user = await prisma.profile.findUnique({
       where: { email },
+      select: { id: true, role: true, status: true, password_hash: true },
     })
   } catch (error: any) {
     return { success: false, message: `Database connection error: ${error.message}` }
@@ -76,6 +78,7 @@ export async function register(formData: FormData): Promise<ActionResult> {
 
   const existingUser = await prisma.profile.findUnique({
     where: { email },
+    select: { id: true },
   })
 
   if (existingUser) {
@@ -95,6 +98,7 @@ export async function register(formData: FormData): Promise<ActionResult> {
         role: 'anggota',
         status: 'aktif',
       },
+      select: { id: true, role: true },
     })
 
     // Auto login after register

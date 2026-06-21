@@ -20,7 +20,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
       user_id: user.id,
       status: { in: ['dipinjam', 'terlambat'] }
     },
-    include: { book: true },
+    include: { 
+      book: {
+        select: {
+          id: true,
+          judul: true,
+        }
+      } 
+    },
     orderBy: { tanggal_jatuh_tempo: 'asc' }
   })
 

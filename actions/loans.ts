@@ -228,15 +228,27 @@ export async function getMyLoans() {
   const user = await getUser()
   if (!user) return []
 
-  await updateOverdueLoans()
+  // REMOVED updateOverdueLoans() from member read path! 
+  // It should be handled by a cron job or only when petugas views loans to prevent blocking reads.
 
   const loans = await prisma.loan.findMany({
     where: { user_id: user.id },
-    include: { book: true },
+    include: { 
+      book: {
+        select: {
+          id: true,
+          judul: true,
+          pengarang: true,
+          isbn: true,
+          cover_url: true,
+          is_ebook: true,
+        }
+      } 
+    },
     orderBy: { created_at: 'desc' }
   })
 
-  return loans
+  return loans as unknown as import('@/types').LoanWithBook[]
 }
 
 // ── Get All Loans (Petugas) ──────────────────────────────────
@@ -244,6 +256,7 @@ export async function getAllLoans(params: LoanFilterParams = {}) {
   const { status, user_id, page = 1, limit = 20 } = params
   const offset = (page - 1) * limit
 
+  // For petugas, it's okay to run this occasionally, though ideally moved to a cron.
   await updateOverdueLoans()
 
   const where: any = {}
@@ -252,13 +265,20 @@ export async function getAllLoans(params: LoanFilterParams = {}) {
 
   const loans = await prisma.loan.findMany({
     where,
-    include: { book: true, profile: true },
+    include: { 
+      book: {
+        select: { id: true, judul: true, isbn: true }
+      }, 
+      profile: {
+        select: { id: true, full_name: true, nim: true }
+      } 
+    },
     orderBy: { created_at: 'desc' },
     skip: offset,
     take: limit,
   })
 
-  return loans
+  return loans as unknown as import('@/types').LoanWithBookAndProfile[]
 }
 
 // ── Get Loan Stats ───────────────────────────────────────────

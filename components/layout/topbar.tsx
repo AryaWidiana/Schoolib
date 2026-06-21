@@ -13,7 +13,7 @@ interface TopbarProps {
 }
 
 // Pages where search should stay in-place
-const SEARCH_IN_PAGE = ['/', '/koleksi', '/ebook', '/populer', '/favorit']
+const SEARCH_IN_PAGE = ['/koleksi', '/ebook', '/populer', '/favorit']
 
 export function Topbar({ profile }: TopbarProps) {
   const [showProfile, setShowProfile] = useState(false)

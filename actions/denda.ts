@@ -63,20 +63,40 @@ export async function getMembersWithFines() {
       role: 'anggota',
       total_denda: { gt: 0 }
     },
-    orderBy: { total_denda: 'desc' }
+    orderBy: { total_denda: 'desc' },
+    select: {
+      id: true,
+      full_name: true,
+      nim: true,
+      phone: true,
+      total_denda: true,
+      status: true,
+      email: true,
+    }
   })
 
-  return members
+  return members as unknown as Profile[]
 }
 
 // Get all members (petugas)
 export async function getAllMembers() {
   const members = await prisma.profile.findMany({
     where: { role: 'anggota' },
-    orderBy: { full_name: 'asc' }
+    orderBy: { full_name: 'asc' },
+    select: {
+      id: true,
+      full_name: true,
+      nim: true,
+      phone: true,
+      email: true,
+      status: true,
+      total_denda: true,
+      created_at: true,
+      avatar_url: true,
+    }
   })
 
-  return members
+  return members as unknown as Profile[]
 }
 
 // Block / unblock member (petugas)

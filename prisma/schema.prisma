@@ -24,6 +24,7 @@ model Profile {
   loans         Loan[]
   notifications Notification[]
 
+  @@index([role])
   @@map("profiles")
 }
 
@@ -45,6 +46,10 @@ model Book {
   favorites        Favorite[]
   loans            Loan[]
 
+  @@index([kategori])
+  @@index([is_ebook])
+  @@index([stok_tersedia])
+  @@index([created_at])
   @@map("books")
 }
 
@@ -63,6 +68,10 @@ model Loan {
   book                Book      @relation(fields: [book_id], references: [id], onDelete: Cascade)
   profile             Profile   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
+  @@index([user_id])
+  @@index([book_id])
+  @@index([status])
+  @@index([user_id, status])
   @@map("loans")
 }
 
@@ -75,6 +84,7 @@ model Favorite {
   profile    Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, book_id])
+  @@index([user_id])
   @@map("favorites")
 }
 
@@ -88,5 +98,8 @@ model Notification {
   created_at DateTime @default(now())
   profile    Profile  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
+  @@index([user_id])
+  @@index([user_id, is_read])
   @@map("notifications")
 }
+

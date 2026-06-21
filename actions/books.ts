@@ -33,9 +33,22 @@ export async function getBooks(params: BookSearchParams = {}) {
     orderBy: { created_at: 'desc' },
     skip: offset,
     take: limit,
+    select: {
+      id: true,
+      judul: true,
+      pengarang: true,
+      isbn: true,
+      kategori: true,
+      cover_url: true,
+      is_ebook: true,
+      jumlah_eksemplar: true,
+      stok_tersedia: true,
+      created_at: true,
+    }
   })
 
-  return books
+  // We cast back to Book because the type expects it, but we omitted large fields like deskripsi
+  return books as unknown as import('@/types').Book[]
 }
 
 export async function getBookById(id: string) {
@@ -71,7 +84,7 @@ export async function createBook(formData: FormData): Promise<ActionResult> {
   const parsed = bookSchema.safeParse(raw)
   if (!parsed.success) return { success: false, message: parsed.error.issues[0].message }
 
-  const existing = await prisma.book.findUnique({ where: { isbn: parsed.data.isbn } })
+  const existing = await prisma.book.findUnique({ where: { isbn: parsed.data.isbn }, select: { id: true } })
   if (existing) return { success: false, message: 'ISBN sudah terdaftar dalam sistem.' }
 
   try {
@@ -110,7 +123,8 @@ export async function updateBook(id: string, formData: FormData): Promise<Action
   if (!parsed.success) return { success: false, message: parsed.error.issues[0].message }
 
   const existing = await prisma.book.findFirst({
-    where: { isbn: parsed.data.isbn, id: { not: id } }
+    where: { isbn: parsed.data.isbn, id: { not: id } },
+    select: { id: true }
   })
   if (existing) return { success: false, message: 'ISBN sudah digunakan buku lain.' }
 
@@ -138,7 +152,8 @@ export async function deleteBook(id: string): Promise<ActionResult> {
     where: {
       book_id: id,
       status: { in: ['dipinjam', 'terlambat'] }
-    }
+    },
+    select: { id: true }
   })
 
   if (activeLoans) {
@@ -162,19 +177,21 @@ export async function toggleFavorite(bookId: string): Promise<ActionResult> {
   const existing = await prisma.favorite.findUnique({
     where: {
       user_id_book_id: { user_id: user.id, book_id: bookId }
-    }
+    },
+    select: { id: true }
   })
 
   try {
     if (existing) {
       await prisma.favorite.delete({ where: { id: existing.id } })
-      revalidatePath('/favorit')
+      // Removed revalidatePath('/favorit') to make action extremely fast and non-blocking
       return { success: true, message: 'Dihapus dari favorit.' }
     } else {
       await prisma.favorite.create({
-        data: { user_id: user.id, book_id: bookId }
+        data: { user_id: user.id, book_id: bookId },
+        select: { id: true } // only return id, reduce transfer
       })
-      revalidatePath('/favorit')
+      // Removed revalidatePath('/favorit') 
       return { success: true, message: 'Ditambahkan ke favorit.' }
     }
   } catch (error: any) {

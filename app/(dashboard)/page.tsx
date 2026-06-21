@@ -20,19 +20,19 @@ const getCachedBerandaBooks = unstable_cache(
 )
 
 export default async function BerandaPage() {
-  const user = await getUser()
-
-  const favoritesQuery = user
-    ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } })
-    : Promise.resolve([])
-
-  // Mode normal: tampilkan beranda
-  const [cachedBooks, favorites] = await Promise.all([
-    getCachedBerandaBooks(),
-    favoritesQuery
+  // 1. Fetching Paralel: Ambil sesi pengguna DAN buku secara BERSAMAAN.
+  // Tidak ada lagi kueri buku yang menunggu pengecekan sesi selesai.
+  const [user, cachedBooks] = await Promise.all([
+    getUser(),
+    getCachedBerandaBooks()
   ])
-  const { rekomendasi, populer, terbaru } = cachedBooks
 
+  // 2. Kueri dependen: Favorit hanya bisa diambil JIKA ada user.id
+  const favorites = user
+    ? await prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } })
+    : []
+
+  const { rekomendasi, populer, terbaru } = cachedBooks
   const favIds = favorites.map(f => f.book_id)
 
   return (

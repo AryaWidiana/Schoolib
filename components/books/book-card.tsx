@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { Heart, BookOpen } from 'lucide-react'
 import Link from 'next/link'
 import type { Book } from '@/types'
@@ -12,7 +13,7 @@ interface BookCardProps {
   showActions?: boolean
 }
 
-export function BookCard({ book, isFavorited = false, showActions = true }: BookCardProps) {
+export const BookCard = memo(function BookCard({ book, isFavorited = false, showActions = true }: BookCardProps) {
   const { isFavorited: favoritedNow, toggleFavorite } = useFavorite(book.id, isFavorited)
   const gradient = getCoverGradient(book.judul)
   const availability = getBookAvailability(book.stok_tersedia)
@@ -106,4 +107,9 @@ export function BookCard({ book, isFavorited = false, showActions = true }: Book
       </div>
     </Link>
   )
-}
+}, (prevProps, nextProps) => {
+  // Hanya re-render jika ID buku atau status favoritnya berubah (mencegah re-render massal di grid)
+  return prevProps.book.id === nextProps.book.id && 
+         prevProps.isFavorited === nextProps.isFavorited &&
+         prevProps.showActions === nextProps.showActions
+})

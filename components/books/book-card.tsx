@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useOptimistic, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Heart, BookOpen } from 'lucide-react'
 import Link from 'next/link'
@@ -16,19 +16,31 @@ interface BookCardProps {
 
 export function BookCard({ book, isFavorited = false, showActions = true }: BookCardProps) {
   const [favorited, setFavorited] = useState(isFavorited)
-  const [pending, startTransition] = useTransition()
+  const [optimisticFavorited, setOptimisticFavorited] = useOptimistic(favorited)
+  const [, startTransition] = useTransition()
   const gradient = getCoverGradient(book.judul)
   const availability = getBookAvailability(book.stok_tersedia)
 
   const handleFavorite = (e: React.MouseEvent) => {
     e.preventDefault()
+    e.stopPropagation()
+
+    // Immediately flip the icon — no waiting for server
     startTransition(async () => {
-      const result = await toggleFavorite(book.id)
-      if (result.success) {
-        setFavorited(!favorited)
-        toast.success(result.message)
-      } else {
-        toast.error(result.message)
+      setOptimisticFavorited(!optimisticFavorited)
+
+      try {
+        const result = await toggleFavorite(book.id)
+        if (result.success) {
+          setFavorited(!favorited)
+          toast.success(result.message, { duration: 1500 })
+        } else {
+          // Rollback: server rejected, revert icon
+          toast.error(result.message)
+        }
+      } catch {
+        // Rollback on network error
+        toast.error('Gagal menyimpan favorit. Coba lagi.')
       }
     })
   }
@@ -85,7 +97,6 @@ export function BookCard({ book, isFavorited = false, showActions = true }: Book
           {showActions && (
             <button
               onClick={handleFavorite}
-              disabled={pending}
               style={{
                 position: 'absolute', top: 8, right: 8,
                 width: 28, height: 28, borderRadius: '50%',
@@ -94,7 +105,7 @@ export function BookCard({ book, isFavorited = false, showActions = true }: Book
                 transition: 'all 0.2s',
               }}
             >
-              <Heart size={14} fill={favorited ? '#EF4444' : 'none'} color={favorited ? '#EF4444' : '#64748B'} />
+              <Heart size={14} fill={optimisticFavorited ? '#EF4444' : 'none'} color={optimisticFavorited ? '#EF4444' : '#64748B'} />
             </button>
           )}
         </div>

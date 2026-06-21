@@ -17,6 +17,7 @@ interface BorrowButtonProps {
 
 export function BorrowButton({ book, profile, alreadyBorrowed, isFavorited }: BorrowButtonProps) {
   const [favorited, setFavorited] = useState(isFavorited)
+  const [optimisticFavorited, setOptimisticFavorited] = useOptimistic(favorited)
   const [pending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -35,13 +36,22 @@ export function BorrowButton({ book, profile, alreadyBorrowed, isFavorited }: Bo
   }
 
   const handleFavorite = () => {
+    if (!profile) return router.push('/login')
+    
+    // Separate transition for optimistic update (no blocking UI)
     startTransition(async () => {
-      const result = await toggleFavorite(book.id)
-      if (result.success) {
-        setFavorited(!favorited)
-        toast.success(result.message)
-      } else {
-        toast.error(result.message)
+      setOptimisticFavorited(!optimisticFavorited)
+      
+      try {
+        const result = await toggleFavorite(book.id)
+        if (result.success) {
+          setFavorited(!favorited)
+          toast.success(result.message, { duration: 1500 })
+        } else {
+          toast.error(result.message)
+        }
+      } catch {
+        toast.error('Gagal menyimpan favorit. Coba lagi.')
       }
     })
   }
@@ -76,16 +86,15 @@ export function BorrowButton({ book, profile, alreadyBorrowed, isFavorited }: Bo
 
       <button
         onClick={handleFavorite}
-        disabled={pending}
         style={{
           width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-          background: favorited ? '#FEE2E2' : '#F1F5F9',
-          border: '1px solid', borderColor: favorited ? '#FECACA' : '#E2E8F0',
+          background: optimisticFavorited ? '#FEE2E2' : '#F1F5F9',
+          border: '1px solid', borderColor: optimisticFavorited ? '#FECACA' : '#E2E8F0',
           display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
           transition: 'all 0.2s',
         }}
       >
-        <Heart size={20} fill={favorited ? '#EF4444' : 'none'} color={favorited ? '#EF4444' : '#64748B'} />
+        <Heart size={20} fill={optimisticFavorited ? '#EF4444' : 'none'} color={optimisticFavorited ? '#EF4444' : '#64748B'} />
       </button>
     </div>
   )

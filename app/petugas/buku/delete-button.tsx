@@ -5,7 +5,8 @@ import { toast } from 'sonner'
 import { Trash2, Loader2 } from 'lucide-react'
 // import { deleteBook } from '@/actions/books'
 
-export function DeleteBookButton(_props: { id: string }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function DeleteBookButton({ id }: { id: string }) {
   const [pending, startTransition] = useTransition()
 
   const handleDelete = () => {

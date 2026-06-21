@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useTransition, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Search, Bell, User, ChevronDown, Loader2 } from 'lucide-react'
+import { Search, Bell, User, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
 import { getInitials } from '@/lib/utils'
@@ -17,7 +17,6 @@ const SEARCH_IN_PAGE = ['/', '/koleksi', '/ebook', '/populer', '/favorit']
 
 export function Topbar({ profile }: TopbarProps) {
   const [showProfile, setShowProfile] = useState(false)
-  const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -39,14 +38,9 @@ export function Topbar({ profile }: TopbarProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     const q = query.trim()
-    if (!q) {
-      // Clear search on empty
-      const target = SEARCH_IN_PAGE.includes(pathname) ? pathname : '/koleksi'
-      startTransition(() => router.push(target))
-      return
-    }
+    // Navigate to the correct page — search itself happens client-side on that page
     const target = SEARCH_IN_PAGE.includes(pathname) ? pathname : '/koleksi'
-    startTransition(() => router.push(`${target}?q=${encodeURIComponent(q)}`))
+    router.push(q ? `${target}?q=${encodeURIComponent(q)}` : target)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -68,14 +62,11 @@ export function Topbar({ profile }: TopbarProps) {
       top: 0,
       zIndex: 50,
     }}>
-      {/* Search */}
+      {/* Search — navigates to page, actual filtering is client-side */}
       {pathname !== '/profil' && (
         <form onSubmit={handleSearch} style={{ flex: 1, maxWidth: 480 }}>
           <div style={{ position: 'relative' }}>
-            {isPending
-              ? <Loader2 size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#1D2A8A', animation: 'spin 1s linear infinite' }} />
-              : <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-            }
+            <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
             <input
               ref={inputRef}
               type="text"
@@ -86,7 +77,7 @@ export function Topbar({ profile }: TopbarProps) {
               style={{
                 width: '100%',
                 padding: '10px 14px 10px 40px',
-                border: `1.5px solid ${isPending ? '#1D2A8A' : '#E2E8F0'}`,
+                border: '1.5px solid #E2E8F0',
                 borderRadius: 12,
                 fontSize: '0.875rem',
                 fontFamily: 'inherit',

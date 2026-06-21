@@ -91,12 +91,10 @@ export default async function BerandaPage({ searchParams }: BerandaProps) {
   }
 
   // Mode normal: tampilkan beranda
-  const [rekomendasi, populer, terbaru, favorites] = await Promise.all([
-    prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { created_at: 'desc' }, take: 6 }),
-    prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { jumlah_eksemplar: 'desc' }, take: 6 }),
-    prisma.book.findMany({ orderBy: { created_at: 'desc' }, take: 6 }),
-    favoritesQuery,
-  ])
+  const rekomendasi = await prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { created_at: 'desc' }, take: 6 })
+  const populer = await prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { jumlah_eksemplar: 'desc' }, take: 6 })
+  const terbaru = await prisma.book.findMany({ orderBy: { created_at: 'desc' }, take: 6 })
+  const favorites = await favoritesQuery
 
   const favIds = favorites.map(f => f.book_id)
 

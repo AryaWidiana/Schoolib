@@ -109,25 +109,34 @@ export async function toggleMemberStatus(userId: string): Promise<ActionResult> 
 
 // Get dashboard stats (petugas)
 export async function getDashboardStats() {
-  const [totalBooks, totalMembers, activeLoans, overdueLoans, finesAgg] = await Promise.all([
-    prisma.book.count(),
-    prisma.profile.count({ where: { role: 'anggota' } }),
-    prisma.loan.count({ where: { status: 'dipinjam' } }),
-    prisma.loan.count({ where: { status: 'terlambat' } }),
-    prisma.profile.aggregate({
+  try {
+    const totalBooks = await prisma.book.count()
+    const totalMembers = await prisma.profile.count({ where: { role: 'anggota' } })
+    const activeLoans = await prisma.loan.count({ where: { status: 'dipinjam' } })
+    const overdueLoans = await prisma.loan.count({ where: { status: 'terlambat' } })
+    const finesAgg = await prisma.profile.aggregate({
       where: { role: 'anggota', total_denda: { gt: 0 } },
       _sum: { total_denda: true }
     })
-  ])
 
-  const totalFines = finesAgg._sum.total_denda || 0
+    const totalFines = finesAgg._sum.total_denda || 0
 
-  return {
-    totalBooks,
-    totalMembers,
-    activeLoans,
-    overdueLoans,
-    totalFines,
+    return {
+      totalBooks,
+      totalMembers,
+      activeLoans,
+      overdueLoans,
+      totalFines,
+    }
+  } catch (error: any) {
+    console.error("Dashboard Stats Error:", error)
+    return {
+      totalBooks: 0,
+      totalMembers: 0,
+      activeLoans: 0,
+      overdueLoans: 0,
+      totalFines: 0,
+    }
   }
 }
 

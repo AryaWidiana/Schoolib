@@ -1,11 +1,11 @@
 'use client'
 
 import { memo } from 'react'
-import { Heart, BookOpen } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import Link from 'next/link'
 import type { Book } from '@/types'
 import { getCoverGradient, getBookAvailability, truncate } from '@/lib/utils'
-import { useFavorite } from '@/hooks/use-favorite'
+import { FavoriteButton } from './favorite-button'
 
 interface BookCardProps {
   book: Book
@@ -14,7 +14,6 @@ interface BookCardProps {
 }
 
 export const BookCard = memo(function BookCard({ book, isFavorited = false, showActions = true }: BookCardProps) {
-  const { isFavorited: favoritedNow, toggleFavorite } = useFavorite(book.id, isFavorited)
   const gradient = getCoverGradient(book.judul)
   const availability = getBookAvailability(book.stok_tersedia)
 
@@ -68,18 +67,7 @@ export const BookCard = memo(function BookCard({ book, isFavorited = false, show
 
           {/* Favorite button */}
           {showActions && (
-            <button
-              onClick={toggleFavorite}
-              style={{
-                position: 'absolute', top: 8, right: 8,
-                width: 28, height: 28, borderRadius: '50%',
-                background: 'rgba(255,255,255,0.9)',
-                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s',
-              }}
-            >
-              <Heart size={14} fill={favoritedNow ? '#EF4444' : 'none'} color={favoritedNow ? '#EF4444' : '#64748B'} />
-            </button>
+            <FavoriteButton bookId={book.id} initialFavoritedStatus={isFavorited} />
           )}
         </div>
 
@@ -108,8 +96,9 @@ export const BookCard = memo(function BookCard({ book, isFavorited = false, show
     </Link>
   )
 }, (prevProps, nextProps) => {
-  // Hanya re-render jika ID buku atau status favoritnya berubah (mencegah re-render massal di grid)
+  // Hanya re-render jika ID buku berubah. Kita tidak perlu bergantung pada 
+  // isFavorited untuk re-render karena FavoriteButton menangani state-nya sendiri.
   return prevProps.book.id === nextProps.book.id && 
-         prevProps.isFavorited === nextProps.isFavorited &&
-         prevProps.showActions === nextProps.showActions
+         prevProps.showActions === nextProps.showActions &&
+         prevProps.isFavorited === nextProps.isFavorited // Tetap di-track in-case parent berubah
 })

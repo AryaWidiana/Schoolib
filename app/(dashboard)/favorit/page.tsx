@@ -15,27 +15,34 @@ export default async function FavoritPage({ searchParams }: FavoritProps) {
   const user = await getUser()
   if (!user) redirect('/login')
 
-  const favorites = await prisma.favorite.findMany({
-    where: { user_id: user.id },
-    include: { 
-      book: {
-        select: {
-          id: true,
-          judul: true,
-          pengarang: true,
-          kategori: true,
-          cover_url: true,
-          is_ebook: true,
-          stok_tersedia: true,
-          jumlah_eksemplar: true,
-        }
-      } 
-    },
-    orderBy: { created_at: 'desc' }
-  })
+  let safeFavorites: { book_id: string; book: import('@/types').Book }[] = []
 
-  const allBooks = favorites.map(f => f.book) as unknown as import('@/types').Book[]
-  const favIds = favorites.map(f => f.book_id)
+  try {
+    const favorites = await prisma.favorite.findMany({
+      where: { user_id: user.id },
+      include: { 
+        book: {
+          select: {
+            id: true,
+            judul: true,
+            pengarang: true,
+            kategori: true,
+            cover_url: true,
+            is_ebook: true,
+            stok_tersedia: true,
+            jumlah_eksemplar: true,
+          }
+        } 
+      },
+      orderBy: { created_at: 'desc' }
+    })
+    safeFavorites = (favorites as unknown as { book_id: string; book: import('@/types').Book }[]) || []
+  } catch {
+    safeFavorites = []
+  }
+
+  const allBooks = safeFavorites.map(f => f?.book).filter(Boolean) as unknown as import('@/types').Book[]
+  const favIds = safeFavorites.map(f => f?.book_id).filter(Boolean)
 
   // Filter di sisi server berdasarkan query
   const books = q && q.trim()

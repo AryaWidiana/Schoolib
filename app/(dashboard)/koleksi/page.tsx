@@ -79,15 +79,30 @@ function SkeletonKoleksi() {
 async function KoleksiContent({ q, kategori }: { q?: string; kategori?: string }) {
   const user = await getUser()
 
-  // Fetching data secara paralel menggunakan Promise.all (tidak waterfall)
-  const [books, categoryData, favorites] = await Promise.all([
-    getCachedKoleksiBooks(),
-    getCachedCategories(),
-    user ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } }) : [],
-  ])
+  let safeBooks: import('@/types').Book[] = []
+  let safeCategories: { kategori: string | null }[] = []
+  let safeFavorites: { book_id: string }[] = []
 
-  const cats = [...new Set(categoryData.map(c => c.kategori as string))].sort()
-  const favIds = (favorites as { book_id: string }[]).map(f => f.book_id)
+  // Fetching data secara paralel dengan perlindungan database error
+  try {
+    const [fetchedBooks, categoryData, favorites] = await Promise.all([
+      getCachedKoleksiBooks(),
+      getCachedCategories(),
+      user ? prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } }) : Promise.resolve([]),
+    ])
+    
+    safeBooks = fetchedBooks || []
+    safeCategories = categoryData || []
+    safeFavorites = favorites || []
+  } catch {
+    // Tangkap error dan render state kosong yang aman
+    safeBooks = []
+    safeCategories = []
+    safeFavorites = []
+  }
+
+  const cats = [...new Set(safeCategories.map(c => c?.kategori as string))].filter(Boolean).sort()
+  const favIds = safeFavorites.map(f => f?.book_id).filter(Boolean)
 
   return (
     <>
@@ -95,13 +110,13 @@ async function KoleksiContent({ q, kategori }: { q?: string; kategori?: string }
         <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1E293B', marginBottom: 4 }}>Koleksi Buku</h1>
         <p style={{ color: '#94A3B8', fontSize: '0.875rem' }}>
           Semua koleksi buku perpustakaan
-          {` — ${books.length} buku tersedia`}
+          {` — ${safeBooks.length} buku tersedia`}
         </p>
       </div>
 
       {/* CategoryFilterGrid: filtering kategori murni client-side (tidak ada server round-trip) */}
       <CategoryFilterGrid
-        books={books}
+        books={safeBooks}
         categories={cats}
         favoritedIds={favIds}
         initialKategori={kategori ?? ''}

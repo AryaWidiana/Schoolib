@@ -10,7 +10,15 @@ interface RiwayatProps {
 
 export default async function RiwayatPage({ searchParams }: RiwayatProps) {
   const { q } = await searchParams
-  const allLoans = await getMyLoans()
+  
+  let allLoans: import('@/types').LoanWithBook[] = []
+  
+  try {
+    const fetchedLoans = await getMyLoans()
+    allLoans = fetchedLoans || []
+  } catch {
+    allLoans = []
+  }
 
   // Filter berdasarkan judul atau pengarang buku
   const filteredLoans = q && q.trim()

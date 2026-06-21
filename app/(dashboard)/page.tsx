@@ -27,19 +27,29 @@ interface BerandaProps {
 export default async function BerandaPage({ searchParams }: BerandaProps) {
   const { q } = await searchParams
 
-  // 1. Fetching Paralel: Ambil sesi pengguna DAN buku secara BERSAMAAN.
-  const [user, cachedBooks] = await Promise.all([
-    getUser(),
-    getCachedBerandaBooks()
-  ])
+  // 1. Fetching Paralel dengan Try-Catch untuk proteksi database crash
+  let cachedBooks = { rekomendasi: [] as import('@/types').Book[], populer: [] as import('@/types').Book[], terbaru: [] as import('@/types').Book[] }
+  let safeFavorites: { book_id: string }[] = []
 
-  // 2. Kueri dependen: Favorit hanya bisa diambil JIKA ada user.id
-  const favorites = user
-    ? await prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } })
-    : []
+  try {
+    const [user, fetchedBooks] = await Promise.all([
+      getUser(),
+      getCachedBerandaBooks()
+    ])
 
-  const { rekomendasi, populer, terbaru } = cachedBooks
-  const favIds = favorites.map(f => f.book_id)
+    const favorites = user
+      ? await prisma.favorite.findMany({ where: { user_id: user.id }, select: { book_id: true } })
+      : []
+
+    cachedBooks = fetchedBooks as { rekomendasi: import('@/types').Book[], populer: import('@/types').Book[], terbaru: import('@/types').Book[] }
+    safeFavorites = favorites || []
+  } catch {
+    // Tangkap error diam-diam untuk mencegah layar mati
+    safeFavorites = []
+  }
+
+  const { rekomendasi = [], populer = [], terbaru = [] } = cachedBooks
+  const favIds = safeFavorites.map(f => f?.book_id).filter(Boolean)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { BookGrid } from '@/components/books/book-grid'
 import type { Book } from '@/types'
 import { DebouncedSearchInput } from '@/components/ui/debounced-search-input'
@@ -60,7 +60,7 @@ export function SearchableBookGrid({
       <BookGrid
         books={filtered}
         favoritedIds={favoritedIds}
-        emptyType={query.trim() ? 'search' : 'books'}
+        emptyType={debouncedQuery.trim() ? 'search' : 'books'}
       />
     </div>
   )

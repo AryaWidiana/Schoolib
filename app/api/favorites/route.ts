@@ -53,8 +53,12 @@ export async function POST(req: NextRequest) {
 
     // Was favorited → already deleted above
     return NextResponse.json({ success: true, action: 'removed', message: 'Dihapus dari favorit.' })
-  } catch (error: any) {
-    console.error('[POST /api/favorites] Error:', error)
-    return NextResponse.json({ success: false, message: 'Terjadi kesalahan server.' }, { status: 500 })
+  } catch (error: unknown) {
+    let errorMessage = 'Terjadi kesalahan server.'
+    if (error instanceof Error) {
+      errorMessage = error.message
+    }
+    console.error('[POST /api/favorites] Error:', errorMessage)
+    return NextResponse.json({ success: false, message: errorMessage }, { status: 500 })
   }
 }

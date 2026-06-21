@@ -8,6 +8,21 @@ interface BerandaProps {
   searchParams: Promise<{ q?: string }>
 }
 
+import { unstable_cache } from 'next/cache'
+
+const getCachedBerandaBooks = unstable_cache(
+  async () => {
+    const [rekomendasi, populer, terbaru] = await Promise.all([
+      prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { created_at: 'desc' }, take: 6 }),
+      prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { jumlah_eksemplar: 'desc' }, take: 6 }),
+      prisma.book.findMany({ orderBy: { created_at: 'desc' }, take: 6 }),
+    ])
+    return { rekomendasi, populer, terbaru }
+  },
+  ['beranda-books'],
+  { revalidate: 60, tags: ['books'] }
+)
+
 export default async function BerandaPage({ searchParams }: BerandaProps) {
   const start = performance.now()
   const { q } = await searchParams
@@ -91,10 +106,11 @@ export default async function BerandaPage({ searchParams }: BerandaProps) {
   }
 
   // Mode normal: tampilkan beranda
-  const rekomendasi = await prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { created_at: 'desc' }, take: 6 })
-  const populer = await prisma.book.findMany({ where: { stok_tersedia: { gt: 0 } }, orderBy: { jumlah_eksemplar: 'desc' }, take: 6 })
-  const terbaru = await prisma.book.findMany({ orderBy: { created_at: 'desc' }, take: 6 })
-  const favorites = await favoritesQuery
+  const [cachedBooks, favorites] = await Promise.all([
+    getCachedBerandaBooks(),
+    favoritesQuery
+  ])
+  const { rekomendasi, populer, terbaru } = cachedBooks
 
   const favIds = favorites.map(f => f.book_id)
 

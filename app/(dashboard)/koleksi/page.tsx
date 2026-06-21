@@ -19,10 +19,10 @@ export default async function KoleksiPage({ searchParams }: KoleksiProps) {
 
   if (q) {
     where.OR = [
-      { judul: { contains: q } },
-      { pengarang: { contains: q } },
-      { isbn: { contains: q } },
-      { kategori: { contains: q } },
+      { judul: { contains: q, mode: 'insensitive' } },
+      { pengarang: { contains: q, mode: 'insensitive' } },
+      { isbn: { contains: q, mode: 'insensitive' } },
+      { kategori: { contains: q, mode: 'insensitive' } },
     ]
   }
 

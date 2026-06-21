@@ -38,10 +38,10 @@ export default async function BerandaPage({ searchParams }: BerandaProps) {
       prisma.book.findMany({
         where: {
           OR: [
-            { judul: { contains: q } },
-            { pengarang: { contains: q } },
-            { isbn: { contains: q } },
-            { kategori: { contains: q } },
+            { judul: { contains: q, mode: 'insensitive' } },
+            { pengarang: { contains: q, mode: 'insensitive' } },
+            { isbn: { contains: q, mode: 'insensitive' } },
+            { kategori: { contains: q, mode: 'insensitive' } },
           ],
         },
         orderBy: { judul: 'asc' },

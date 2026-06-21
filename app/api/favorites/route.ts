@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/session'
 
@@ -48,10 +49,16 @@ export async function POST(req: NextRequest) {
         data: { user_id: userId, book_id: bookId },
         select: { id: true }, // return minimum payload
       })
+      // Silently purge the /favorit RSC cache on the server.
+      // Because this runs inside an API Route (not a Server Action), it does NOT
+      // block the browser — the client already has its optimistic UI update and
+      // the response is sent before the cache invalidation even starts.
+      revalidatePath('/favorit')
       return NextResponse.json({ success: true, action: 'added', message: 'Ditambahkan ke favorit.' })
     }
 
     // Was favorited → already deleted above
+    revalidatePath('/favorit')
     return NextResponse.json({ success: true, action: 'removed', message: 'Dihapus dari favorit.' })
   } catch (error: unknown) {
     let errorMessage = 'Terjadi kesalahan server.'

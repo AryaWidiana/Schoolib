@@ -11,9 +11,11 @@ interface BookCardProps {
   book: Book
   isFavorited?: boolean
   showActions?: boolean
+  /** Forwarded to FavoriteButton → useFavorite. Called after server confirms toggle success. */
+  onFavoriteToggleSuccess?: (newIsFavorited: boolean) => void
 }
 
-export const BookCard = memo(function BookCard({ book, isFavorited = false, showActions = true }: BookCardProps) {
+export const BookCard = memo(function BookCard({ book, isFavorited = false, showActions = true, onFavoriteToggleSuccess }: BookCardProps) {
   const gradient = getCoverGradient(book.judul)
   const availability = getBookAvailability(book.stok_tersedia)
 
@@ -65,9 +67,12 @@ export const BookCard = memo(function BookCard({ book, isFavorited = false, show
             )}
           </div>
 
-          {/* Favorite button */}
           {showActions && (
-            <FavoriteButton bookId={book.id} initialFavoritedStatus={isFavorited} />
+            <FavoriteButton
+              bookId={book.id}
+              initialFavoritedStatus={isFavorited}
+              onToggleSuccess={onFavoriteToggleSuccess}
+            />
           )}
         </div>
 
@@ -96,9 +101,10 @@ export const BookCard = memo(function BookCard({ book, isFavorited = false, show
     </Link>
   )
 }, (prevProps, nextProps) => {
-  // Hanya re-render jika ID buku berubah. Kita tidak perlu bergantung pada 
-  // isFavorited untuk re-render karena FavoriteButton menangani state-nya sendiri.
-  return prevProps.book.id === nextProps.book.id && 
+  // Re-render hanya jika data buku atau props kunci berubah.
+  // onFavoriteToggleSuccess tidak dimasukkan karena harus stabil (dibuat dengan
+  // useCallback di parent) dan perubahan callback tidak mempengaruhi tampilan.
+  return prevProps.book.id === nextProps.book.id &&
          prevProps.showActions === nextProps.showActions &&
-         prevProps.isFavorited === nextProps.isFavorited // Tetap di-track in-case parent berubah
+         prevProps.isFavorited === nextProps.isFavorited
 })

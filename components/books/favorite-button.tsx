@@ -7,17 +7,37 @@ import { useFavorite } from '@/hooks/use-favorite'
 interface FavoriteButtonProps {
   bookId: string
   initialFavoritedStatus: boolean
+  /**
+   * Callback opsional yang dipanggil setelah mutasi server BERHASIL.
+   * Menerima status favorit terbaru sebagai argumen (true = ditambahkan, false = dihapus).
+   *
+   * Gunakan ini di halaman /favorit untuk langsung menghapus card dari daftar
+   * lokal tanpa menunggu router refresh:
+   * @example
+   * <FavoriteButton
+   *   bookId={book.id}
+   *   initialFavoritedStatus={true}
+   *   onToggleSuccess={(isFav) => {
+   *     if (!isFav) setLocalBooks(prev => prev.filter(b => b.id !== book.id))
+   *   }}
+   * />
+   */
+  onToggleSuccess?: (newIsFavorited: boolean) => void
 }
 
-// Menggunakan memo agar komponen ini tidak re-render kecuali props berubah
+// Menggunakan memo agar komponen ini tidak re-render kecuali props berubah.
+// Catatan: onToggleSuccess harus stabil (pakai useCallback di parent) agar
+// memo comparison tidak gagal setiap render.
 export const FavoriteButton = memo(function FavoriteButton({ 
   bookId, 
-  initialFavoritedStatus 
+  initialFavoritedStatus,
+  onToggleSuccess,
 }: FavoriteButtonProps) {
-  // Pindahkan hook useFavorite ke DALAM Micro-Component ini
-  // Dengan begini, saat state isLiked berubah, HANYA tombol ini yang re-render
-  // bukan seluruh BookCard.
-  const { isFavorited: favoritedNow, toggleFavorite } = useFavorite(bookId, initialFavoritedStatus)
+  const { isFavorited: favoritedNow, toggleFavorite } = useFavorite(
+    bookId,
+    initialFavoritedStatus,
+    onToggleSuccess,
+  )
 
   return (
     <button
@@ -33,7 +53,7 @@ export const FavoriteButton = memo(function FavoriteButton({
         background: 'rgba(255,255,255,0.9)',
         border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'all 0.2s',
-        zIndex: 10 // Pastikan tombol bisa di-klik dan berada di atas elemen lain
+        zIndex: 10,
       }}
       aria-label={favoritedNow ? 'Hapus dari Favorit' : 'Tambah ke Favorit'}
     >

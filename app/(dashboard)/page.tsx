@@ -1,8 +1,7 @@
 import { getUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { BookGrid } from '@/components/books/book-grid'
-import { SearchableBookGrid } from '@/components/books/searchable-book-grid'
-import { BookOpen, TrendingUp, Sparkles, ArrowRight } from 'lucide-react'
+import { BerandaClient } from './beranda-client'
+import { BookOpen, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 
 import { unstable_cache } from 'next/cache'
@@ -97,56 +96,13 @@ export default async function BerandaPage({ searchParams }: BerandaProps) {
         </div>
       </div>
 
-      {/* Rekomendasi */}
-      <section className="animate-fade-in-up stagger-1">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E293B' }}>Rekomendasi untuk Kamu</h2>
-            <p style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Buku pilihan yang tersedia sekarang</p>
-          </div>
-          <Link href="/koleksi" style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#1D2A8A', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 700 }}>
-            Lihat semua <ArrowRight size={14} />
-          </Link>
-        </div>
-        {/* SearchableBookGrid agar pencarian dari Topbar berfungsi di Beranda */}
-        <SearchableBookGrid
-          books={rekomendasi ?? []}
-          favoritedIds={favIds}
-          initialQuery={q ?? ''}
-          placeholder="Cari judul, pengarang, atau ISBN..."
-        />
-      </section>
-
-      {/* Populer */}
-      <section className="animate-fade-in-up stagger-2">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E293B' }}>
-              <TrendingUp size={18} style={{ display: 'inline', marginRight: 6, color: '#F59E0B' }} />
-              Buku Populer
-            </h2>
-            <p style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Paling banyak dipinjam anggota</p>
-          </div>
-          <Link href="/populer" style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#1D2A8A', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 700 }}>
-            Lihat semua <ArrowRight size={14} />
-          </Link>
-        </div>
-        <BookGrid books={populer ?? []} favoritedIds={favIds} />
-      </section>
-
-      {/* Terbaru */}
-      <section className="animate-fade-in-up stagger-3">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E293B' }}>Buku Terbaru</h2>
-            <p style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Koleksi yang baru ditambahkan</p>
-          </div>
-          <Link href="/koleksi" style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#1D2A8A', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 700 }}>
-            Lihat semua <ArrowRight size={14} />
-          </Link>
-        </div>
-        <BookGrid books={terbaru ?? []} favoritedIds={favIds} />
-      </section>
+      <BerandaClient 
+        rekomendasi={rekomendasi ?? []} 
+        populer={populer ?? []} 
+        terbaru={terbaru ?? []} 
+        favoritedIds={favIds} 
+        initialQuery={q ?? ''} 
+      />
     </div>
   )
 }

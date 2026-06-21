@@ -5,6 +5,8 @@ import { BookOpen, Calendar, Tag, Hash, Building, ExternalLink } from 'lucide-re
 import { BorrowButton } from './borrow-button'
 import { BackButton } from '@/components/ui/back-button'
 
+export const dynamic = 'force-dynamic'
+
 export default async function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // 1. Await params properly per Next.js 15 rules
   const { id } = await params
@@ -13,6 +15,8 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
   let book = null
   let activeLoan = null
   let favorite = null
+
+  let fetchError = null
 
   // 2. Defensive Programming: try-catch untuk mencegah crash jika ID bukan UUID valid
   try {
@@ -39,14 +43,17 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
     book = fetchedBook
     activeLoan = fetchedLoan
     favorite = fetchedFavorite
-  } catch {
-    // Tangkap error Prisma (misal: format UUID tidak valid)
-    // dan biarkan jatuh ke pengecekan notFound() di bawah
+  } catch (error) {
+    // Tangkap error Prisma (misal: format UUID tidak valid atau koneksi putus/timeout)
+    fetchError = error
     book = null
   }
 
   // 3. Null Checking Ketat: Jika buku tidak ada di database, tampilkan 404
   if (!book) {
+    if (fetchError) {
+      console.error(`[Book Detail] Database error for ID ${id}:`, fetchError)
+    }
     return notFound()
   }
 

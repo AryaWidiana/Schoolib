@@ -19,7 +19,7 @@ export const BookCard = memo(function BookCard({ book, isFavorited = false, show
   const availability = getBookAvailability(book.stok_tersedia)
 
   return (
-    <Link href={`/buku/${book.id}`} prefetch={true} style={{ textDecoration: 'none' }}>
+    <Link href={book?.id ? `/buku/${book.id}` : '#'} prefetch={true} style={{ textDecoration: 'none' }}>
       <div style={{
         cursor: 'pointer', borderRadius: 14, overflow: 'hidden',
         background: 'white', border: '1px solid #E2E8F0',

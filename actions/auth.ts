@@ -21,9 +21,14 @@ export async function login(formData: FormData): Promise<ActionResult> {
 
   const { email, password } = parsed.data
 
-  const user = await prisma.profile.findUnique({
-    where: { email },
-  })
+  let user;
+  try {
+    user = await prisma.profile.findUnique({
+      where: { email },
+    })
+  } catch (error: any) {
+    return { success: false, message: `Database connection error: ${error.message}` }
+  }
 
   if (!user) {
     return { success: false, message: 'Email atau password salah.' }
@@ -38,7 +43,11 @@ export async function login(formData: FormData): Promise<ActionResult> {
     return { success: false, message: 'Akun Anda sedang diblokir. Hubungi petugas.' }
   }
 
-  await createSession(user.id, user.role)
+  try {
+    await createSession(user.id, user.role)
+  } catch (error: any) {
+    return { success: false, message: `Session error: ${error.message}` }
+  }
 
   revalidatePath('/', 'layout')
 

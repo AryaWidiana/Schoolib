@@ -43,7 +43,7 @@ export function PetugasSidebar({ pathname }: { pathname: string }) {
             const isActive = pathname === href || (href !== '/petugas/dashboard' && pathname.startsWith(href))
             return (
               <li key={href}>
-                <Link href={href} style={{
+                <Link href={href} prefetch style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '10px 12px', borderRadius: 10, textDecoration: 'none',
                   fontWeight: isActive ? 700 : 500, fontSize: '0.875rem',

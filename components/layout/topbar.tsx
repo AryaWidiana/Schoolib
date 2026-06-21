@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
-import { Search, Bell, User, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useTransition, useRef } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { Search, Bell, User, ChevronDown, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import type { Profile } from '@/types'
 import { getInitials } from '@/lib/utils'
@@ -12,22 +12,47 @@ interface TopbarProps {
   profile: Profile | null
 }
 
+// Pages where search should stay in-place
+const SEARCH_IN_PAGE = ['/', '/koleksi', '/ebook', '/populer', '/favorit']
+
 export function Topbar({ profile }: TopbarProps) {
-  const [query, setQuery] = useState('')
   const [showProfile, setShowProfile] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const currentQ = searchParams.get('q') ?? ''
+  const [query, setQuery] = useState(currentQ)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Sync input with URL query when navigating
+  useEffect(() => {
+    setQuery(currentQ)
+  }, [currentQ])
+
+  // Prefetch main routes on mount for instant navigation
+  useEffect(() => {
+    const routes = ['/', '/koleksi', '/populer', '/ebook', '/favorit', '/riwayat', '/profil']
+    routes.forEach(route => router.prefetch(route))
+  }, [router])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     const q = query.trim()
-    if (!q) return
-    // Halaman yang menampilkan hasil pencarian di tempat (tidak redirect)
-    const inPageSearchPaths = ['/', '/koleksi', '/ebook', '/populer', '/favorit', '/riwayat']
-    if (inPageSearchPaths.includes(pathname)) {
-      router.push(`${pathname}?q=${encodeURIComponent(q)}`)
-    } else {
-      router.push(`/koleksi?q=${encodeURIComponent(q)}`)
+    if (!q) {
+      // Clear search on empty
+      const target = SEARCH_IN_PAGE.includes(pathname) ? pathname : '/koleksi'
+      startTransition(() => router.push(target))
+      return
+    }
+    const target = SEARCH_IN_PAGE.includes(pathname) ? pathname : '/koleksi'
+    startTransition(() => router.push(`${target}?q=${encodeURIComponent(q)}`))
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setQuery('')
+      inputRef.current?.blur()
     }
   }
 
@@ -43,37 +68,44 @@ export function Topbar({ profile }: TopbarProps) {
       top: 0,
       zIndex: 50,
     }}>
-      {/* Search — disembunyikan di halaman profil */}
-      {pathname !== '/profil' && <form onSubmit={handleSearch} style={{ flex: 1, maxWidth: 480 }}>
-        <div style={{ position: 'relative' }}>
-          <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari judul, pengarang, atau ISBN..."
-            style={{
-              width: '100%',
-              padding: '10px 14px 10px 40px',
-              border: '1.5px solid #E2E8F0',
-              borderRadius: 12,
-              fontSize: '0.875rem',
-              fontFamily: 'inherit',
-              background: '#F8FAFC',
-              color: '#1E293B',
-              outline: 'none',
-              transition: 'all 0.2s',
-            }}
-            onFocus={(e) => { e.target.style.borderColor = '#1D2A8A'; e.target.style.background = 'white'; e.target.style.boxShadow = '0 0 0 3px rgba(29,42,138,0.08)' }}
-            onBlur={(e) => { e.target.style.borderColor = '#E2E8F0'; e.target.style.background = '#F8FAFC'; e.target.style.boxShadow = 'none' }}
-          />
-        </div>
-      </form>}
+      {/* Search */}
+      {pathname !== '/profil' && (
+        <form onSubmit={handleSearch} style={{ flex: 1, maxWidth: 480 }}>
+          <div style={{ position: 'relative' }}>
+            {isPending
+              ? <Loader2 size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#1D2A8A', animation: 'spin 1s linear infinite' }} />
+              : <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+            }
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Cari judul, pengarang, atau ISBN..."
+              style={{
+                width: '100%',
+                padding: '10px 14px 10px 40px',
+                border: `1.5px solid ${isPending ? '#1D2A8A' : '#E2E8F0'}`,
+                borderRadius: 12,
+                fontSize: '0.875rem',
+                fontFamily: 'inherit',
+                background: '#F8FAFC',
+                color: '#1E293B',
+                outline: 'none',
+                transition: 'all 0.2s',
+              }}
+              onFocus={(e) => { e.target.style.borderColor = '#1D2A8A'; e.target.style.background = 'white'; e.target.style.boxShadow = '0 0 0 3px rgba(29,42,138,0.08)' }}
+              onBlur={(e) => { e.target.style.borderColor = '#E2E8F0'; e.target.style.background = '#F8FAFC'; e.target.style.boxShadow = 'none' }}
+            />
+          </div>
+        </form>
+      )}
 
       <div style={{ flex: 1 }} />
 
       {/* Notification bell */}
-      <Link href="/profil" style={{
+      <Link href="/profil" prefetch style={{
         position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
         width: 40, height: 40, borderRadius: 10, background: '#F8FAFC',
         border: '1px solid #E2E8F0', textDecoration: 'none', color: '#64748B',
@@ -120,7 +152,7 @@ export function Topbar({ profile }: TopbarProps) {
             boxShadow: '0 8px 32px rgba(0,0,0,0.12)', minWidth: 180, zIndex: 100,
             padding: 8,
           }}>
-            <Link href="/profil" onClick={() => setShowProfile(false)} style={{
+            <Link href="/profil" prefetch onClick={() => setShowProfile(false)} style={{
               display: 'block', padding: '9px 12px', borderRadius: 8,
               textDecoration: 'none', fontSize: '0.875rem', color: '#1E293B',
               fontWeight: 500,
@@ -128,7 +160,7 @@ export function Topbar({ profile }: TopbarProps) {
               onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >👤 Profil Saya</Link>
-            <Link href="/riwayat" onClick={() => setShowProfile(false)} style={{
+            <Link href="/riwayat" prefetch onClick={() => setShowProfile(false)} style={{
               display: 'block', padding: '9px 12px', borderRadius: 8,
               textDecoration: 'none', fontSize: '0.875rem', color: '#1E293B', fontWeight: 500,
             }}

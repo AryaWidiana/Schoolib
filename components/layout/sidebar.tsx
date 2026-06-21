@@ -61,6 +61,7 @@ export function Sidebar() {
               <li key={href}>
                 <Link
                   href={href}
+                  prefetch
                   style={{
                     display: 'flex',
                     alignItems: 'center',

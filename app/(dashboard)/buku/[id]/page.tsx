@@ -6,27 +6,49 @@ import Link from 'next/link'
 import { BorrowButton } from './borrow-button'
 
 export default async function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  // 1. Await params properly per Next.js 15 rules
   const { id } = await params
   const user = await getUser()
-  if (!user) redirect('/login')
 
-  const [book, activeLoan, favorite] = await Promise.all([
-    prisma.book.findUnique({ where: { id } }),
-    prisma.loan.findFirst({
-      where: {
-        user_id: user.id,
-        book_id: id,
-        status: { in: ['dipinjam', 'terlambat'] }
-      }
-    }),
-    prisma.favorite.findUnique({
-      where: {
-        user_id_book_id: { user_id: user.id, book_id: id }
-      }
-    })
-  ])
+  let book = null
+  let activeLoan = null
+  let favorite = null
 
-  if (!book) notFound()
+  // 2. Defensive Programming: try-catch untuk mencegah crash jika ID bukan UUID valid
+  try {
+    // Jalankan query secara paralel dengan aman
+    const [fetchedBook, fetchedLoan, fetchedFavorite] = await Promise.all([
+      prisma.book.findUnique({ where: { id } }),
+      
+      // Jika user null (guest), kembalikan null tanpa melakukan query
+      user ? prisma.loan.findFirst({
+        where: {
+          user_id: user.id,
+          book_id: id,
+          status: { in: ['dipinjam', 'terlambat'] }
+        }
+      }) : Promise.resolve(null),
+      
+      user ? prisma.favorite.findUnique({
+        where: {
+          user_id_book_id: { user_id: user.id, book_id: id }
+        }
+      }) : Promise.resolve(null)
+    ])
+
+    book = fetchedBook
+    activeLoan = fetchedLoan
+    favorite = fetchedFavorite
+  } catch (error) {
+    // Tangkap error Prisma (misal: format UUID tidak valid)
+    // dan biarkan jatuh ke pengecekan notFound() di bawah
+    book = null
+  }
+
+  // 3. Null Checking Ketat: Jika buku tidak ada di database, tampilkan 404
+  if (!book) {
+    return notFound()
+  }
 
   const alreadyBorrowed = !!activeLoan
   const isFavorited = !!favorite

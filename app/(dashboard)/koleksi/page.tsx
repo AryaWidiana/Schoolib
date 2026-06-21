@@ -4,17 +4,7 @@ import { unstable_cache } from 'next/cache'
 import dynamic from 'next/dynamic'
 import { CategoryFilterGrid } from '@/components/books/category-filter-grid'
 
-// Poin 5: Implementasi Code Splitting & Lazy Loading untuk komponen berat (Banyak Gambar)
-const SearchableBookGrid = dynamic(
-  () => import('@/components/books/searchable-book-grid').then(mod => mod.SearchableBookGrid),
-  { 
-    loading: () => (
-      <div style={{ padding: '40px 0', textAlign: 'center', color: '#94A3B8' }}>
-        Memuat koleksi buku perpustakaan...
-      </div>
-    )
-  }
-)
+
 
 // Batas maksimum buku yang diambil dari database sekaligus.
 // Ini mencegah transfer ratusan/ribuan buku ke client yang membuat DOM bloat.
